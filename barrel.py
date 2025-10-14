@@ -31,7 +31,12 @@ def serve():
     server.add_insecure_port('[::]:8183')
     server.start()
     print("Index Storage Barrel iniciado na porta 8183")
-    server.wait_for_termination()
+    try:
+        server.wait_for_termination()
+    except KeyboardInterrupt:
+        print("A encerrar o Barrel...")
+        server.stop(0)
+
 
 if __name__ == '__main__':
     serve()

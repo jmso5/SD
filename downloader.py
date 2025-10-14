@@ -1,21 +1,21 @@
-from queue import Queue
-from bs4 import BeautifulSoup
-import requests
-from urllib.parse import urljoin
-import grpc
+from queue import Queue # fila FIFO para URLs
+from bs4 import BeautifulSoup # Biblioteca para parsear HTML e extrair texto/links
+import requests # Para fazer o download das páginas
+from urllib.parse import urljoin # Para transformar links relativos em absolutos
+import grpc # Comunicação RPC com o Barrel
 import index_pb2
 import index_pb2_grpc
 
 
 class Downloader:
     def __init__(self, barrel_address = "localhost:8183"):
-        self.urls_a_visitar = Queue()   # URLs por visitar
-        self.urls_visitadas = set()     # URLs já visitados
-        self.stub = self.connect_barrel(barrel_address)
+        self.urls_a_visitar = Queue()   # fila de URLs por visitar
+        self.urls_visitadas = set()     # fila de URLs já visitados
+        self.stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
 
     def connect_barrel(self, addr):
-        canal = grpc.insecure_channel(addr)
-        return index_pb2_grpc.IndexStub(canal)
+        canal = grpc.insecure_channel(addr)  # cria canal gRPC
+        return index_pb2_grpc.IndexStub(canal)  # cria stub (cliente)
 
     def adicionar_url_inicial(self, url):
         """
@@ -27,11 +27,33 @@ class Downloader:
             self.urls_a_visitar.put(url)
         else:
             print(f"URL já visitado: {url}")
+    
+    def validador_url(self, url):
+        # Filtra URLs inválidos
+
+        if not url:
+            return False
+        url_lower = url.lower()
+        if url_lower.startswith("javascript:"):
+            return False
+        if url_lower.startswith("mailto:"):
+            return False
+        if url_lower.startswith("#"):
+            return False
+        if url_lower.startswith("http://") or url_lower.startswith("https://"):
+            return True
+        return False
+
 
     def processar_url(self, url):
         try:
             print(f"A descarregar: {url}")
-            resposta = requests.get(url, timeout=5)
+
+            # Define um User-Agent para evitar bloqueios por alguns servidores
+            headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+            }
+            resposta = requests.get(url,headers=headers, timeout=5)
 
             if resposta.status_code == 200 and 'text/html' in resposta.headers.get('Content-Type', ''): # resposta.status_code == 200 -> verifica se o pedido foi bem sucedido
                 self.urls_visitadas.add(url)
@@ -57,49 +79,9 @@ class Downloader:
 
         return {"url": base_url, "titulo": titulo, "texto": texto, "links": links}
 
-    '''def main_loop(self):
-        """
-        Loop principal (iterativo):
-        Enquanto houver URLs na fila:
-         - tira o próximo URL
-         - faz o download
-         - extrai informação
-         - adiciona os links encontrados à fila (se ainda não visitados)
-        """
-        while not self.urls_a_visitar.empty():
-            url = self.urls_a_visitar.get()
 
-            # ignora se já tiver visitado (pode ter entrado por links duplicados)
-            if url in self.urls_visitadas:
-                continue
-
-            html = self.processar_url(url)
-            if not html:
-                continue
-
-            info = self.extrair_informacao(html, url)
-
-            print(f"\nTÍTULO -> {info['titulo']}")
-            print(f"URL -> {info['url']}")
-            print(f"NÚMERO DE LINKS ENCONTRADOS -> {len(info['links'])}")
-            print("-" * 60)
-
-            # atualiza índice invertido
-            palavras = info["texto"].lower().split()
-
-            for palavra in palavras:
-                if palavra.isalpha():
-                    if palavra not in self.indice_invertido:
-                        self.indice_invertido[palavra] = set()
-                    self.indice_invertido[palavra].add(info["url"])
-
-            # adiciona novos links 
-            for link in info["links"]:
-                if link not in self.urls_visitadas:
-                    self.urls_a_visitar.put(link)
-    '''
-
-    def main_loop(self, max_paginas=10):
+    """
+    def main_loop(self, max_paginas=1000):
         paginas_processadas = 0
         while not self.urls_a_visitar.empty() and paginas_processadas < max_paginas:
             url = self.urls_a_visitar.get()
@@ -126,6 +108,38 @@ class Downloader:
                         print(f"Erro RPC: {e}")
 
             paginas_processadas += 1
+    """
+
+    def main_loop(self):
+        while not self.urls_a_visitar.empty():
+            url = self.urls_a_visitar.get()
+            if url in self.urls_visitadas:
+                continue
+
+            html = self.processar_url(url)
+            if not html:
+                continue
+
+            info = self.extrair_informacao(html, url)
+            print(f"\nTÍTULO -> {info['titulo']}")
+            print(f"URL -> {info['url']}")
+            print(f"NÚMERO DE LINKS ENCONTRADOS -> {len(info['links'])}")
+            print("-" * 60)
+
+            # envia palavras para o Barrel
+            palavras = info["texto"].lower().split()
+            for palavra in palavras:
+                if palavra.isalpha():
+                    try:
+                        self.stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
+                    except grpc.RpcError as e:
+                        print(f"Erro RPC: {e}")
+
+            # adiciona novos links à fila
+            for link in info["links"]:
+                if link not in self.urls_visitadas and self.validador_url(link):
+                    self.urls_a_visitar.put(link)
+
 
 
     def pesquisar(self, termo):
@@ -147,10 +161,16 @@ if __name__ == "__main__":
     url_introduzido = input("Instroduza URL: ") 
     d.adicionar_url_inicial(url_introduzido)
 
-    d.main_loop(max_paginas=10)
+    #d.main_loop(max_paginas=10)
+    d.main_loop()
 
     termo = ""
-    while termo.upper() != "SAIR":
+
+    while (True):
         termo = input("\nPesquisar termo (ou ENTER para sair): ").strip()
+
+        if termo.lower() == "sair":
+            print("A sair...")
+            break
         
         d.pesquisar(termo)
