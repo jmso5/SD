@@ -13,6 +13,11 @@ service Index {
     rpc searchWord (SearchWordRequest) returns (SearchWordResponse);
 }
 
+service Queue {
+    rpc putNew (PutNewRequest) returns (google.protobuf.Empty);
+    rpc takeNext (google.protobuf.Empty) returns (TakeNextResponse);
+}
+
 message PutNewRequest {
     string url = 1;
 }
@@ -21,18 +26,25 @@ message PutNewRequest {
 message AddToIndexRequest {
     string word = 1;
     string url = 2;
+    string title = 3;
+    string citacao = 4;
 }
 
 // Messages for searchWord method
 message SearchWordRequest {
     string word = 1;
 }
+
+message SearchResult {
+    string url = 1;
+    string title = 2;
+    string citacao = 3;
+}
+
 message SearchWordResponse {
-    repeated string urls = 1;
+    repeated SearchResult results = 1;
 }
 
 message TakeNextResponse {
     string url = 1;
 }
-
-

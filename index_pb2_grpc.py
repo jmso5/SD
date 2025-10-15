@@ -228,3 +228,118 @@ class Index(object):
             timeout,
             metadata,
             _registered_method=True)
+
+
+class QueueStub(object):
+    """Missing associated documentation comment in .proto file."""
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.putNew = channel.unary_unary(
+                '/search.Queue/putNew',
+                request_serializer=index__pb2.PutNewRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.takeNext = channel.unary_unary(
+                '/search.Queue/takeNext',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=index__pb2.TakeNextResponse.FromString,
+                _registered_method=True)
+
+
+class QueueServicer(object):
+    """Missing associated documentation comment in .proto file."""
+
+    def putNew(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def takeNext(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_QueueServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'putNew': grpc.unary_unary_rpc_method_handler(
+                    servicer.putNew,
+                    request_deserializer=index__pb2.PutNewRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'takeNext': grpc.unary_unary_rpc_method_handler(
+                    servicer.takeNext,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=index__pb2.TakeNextResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'search.Queue', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('search.Queue', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class Queue(object):
+    """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def putNew(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.Queue/putNew',
+            index__pb2.PutNewRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def takeNext(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.Queue/takeNext',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            index__pb2.TakeNextResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)

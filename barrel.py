@@ -11,19 +11,25 @@ class IndexServicer(index_pb2_grpc.IndexServicer):
     def addToIndex(self, request, context):
         palavra = request.word.lower()
         url = request.url
+        title = request.url
+        citacao = request.url
 
         if palavra not in self.indice_invertido:
             self.indice_invertido[palavra] = set()
-        self.indice_invertido[palavra].add(url)
+        self.indice_invertido[palavra].add((url, title, citacao))
 
         print(f"[+] Adicionada '{palavra}' -> {url}")
         return empty_pb2.Empty()
 
     def searchWord(self, request, context):
         termo = request.word.lower()
-        urls = list(self.indice_invertido.get(termo, []))
-        print(f"Pesquisa '{termo}' -> {len(urls)} resultados")
-        return index_pb2.SearchWordResponse(urls=urls)
+        resultados = [
+            index_pb2.SearchResult(url=url, title=title, citacao=citacao)
+            for url, title, citacao in self.indice_invertido.get(termo, [])
+        ]
+        print(f"Pesquisa '{termo}' -> {len(resultados)} resultados")
+        return index_pb2.SearchWordResponse(results=resultados)
+
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

@@ -5,18 +5,23 @@ from urllib.parse import urljoin # Para transformar links relativos em absolutos
 import grpc # Comunicação RPC com o Barrel
 import index_pb2
 import index_pb2_grpc
-
+from google.protobuf import empty_pb2
 
 class Downloader:
-    def __init__(self, barrel_address = "localhost:8183"):
+    def __init__(self, queue_addr="localhost:8182", barrel_address = "localhost:8183"):
         self.urls_a_visitar = Queue()   # fila de URLs por visitar
         self.urls_visitadas = set()     # fila de URLs já visitados
-        self.stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
+        self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
+        self.queue_stub = self.connect_queue(queue_addr)
 
     def connect_barrel(self, addr):
         canal = grpc.insecure_channel(addr)  # cria canal gRPC
         return index_pb2_grpc.IndexStub(canal)  # cria stub (cliente)
 
+    def connect_queue(self, addr):
+        canal = grpc.insecure_channel(addr)
+        return index_pb2_grpc.QueueStub(canal)
+    
     def adicionar_url_inicial(self, url):
         """
         Adiciona o primeiro URL à fila.
@@ -80,11 +85,17 @@ class Downloader:
         return {"url": base_url, "titulo": titulo, "texto": texto, "links": links}
 
 
-    """
+    
     def main_loop(self, max_paginas=1000):
         paginas_processadas = 0
-        while not self.urls_a_visitar.empty() and paginas_processadas < max_paginas:
-            url = self.urls_a_visitar.get()
+        while paginas_processadas < max_paginas:
+            resposta = self.queue_stub.takeNext(empty_pb2.Empty())
+            url = resposta.url
+            
+            if not url:
+                print("[!] Fila vazia, a esperar...")
+                break
+
             if url in self.urls_visitadas:
                 continue
 
@@ -103,13 +114,21 @@ class Downloader:
             for palavra in palavras:
                 if palavra.isalpha():
                     try:
-                        self.stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
+                        self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
                     except grpc.RpcError as e:
                         print(f"Erro RPC: {e}")
 
-            paginas_processadas += 1
-    """
+            # Adiciona links encontrados à Queue
+            for link in info["links"]:
+                if link not in self.urls_visitadas and self.validador_url(link):
+                    try:
+                        self.queue_stub.putNew(index_pb2.PutNewRequest(url=link))
+                    except grpc.RpcError as e:
+                        print(f"Erro RPC ao adicionar URL à Queue: {e}")
 
+            paginas_processadas += 1
+    
+    '''
     def main_loop(self):
         while not self.urls_a_visitar.empty():
             url = self.urls_a_visitar.get()
@@ -139,38 +158,52 @@ class Downloader:
             for link in info["links"]:
                 if link not in self.urls_visitadas and self.validador_url(link):
                     self.urls_a_visitar.put(link)
-
-
+    '''
 
     def pesquisar(self, termo):
         try:
-            resposta = self.stub.searchWord(index_pb2.SearchWordRequest(word=termo))
-            if resposta.urls:
-                print(f"\nResultados para '{termo}':")
-                for url in resposta.urls:
-                    print(f" - {url}")
-            else:
+            resposta = self.barrel_stub.searchWord(index_pb2.SearchWordRequest(word=termo))
+            resultados = resposta.results
+
+            if not resultados:
                 print(f"\nNenhum resultado para '{termo}'.")
+                return
+
+            for i in range(0, len(resultados), 10):
+                grupo = resultados[i:i+10]
+                print(f"\n--- Página {i//10 + 1} ---")
+                for r in grupo:
+                    print(f"\nTÍTULO -> {r.title}")
+                    print(f"URL -> {r.url}")
+                    print(f"CITAÇÃO -> {r.citacao[:200]}...")  # primeiros 200 chars
+                    print("-" * 60)
+
+                if i + 10 < len(resultados):
+                    continuar = input("\nMostrar mais resultados? (Enter para continuar, 'n' para parar): ")
+                    if continuar.lower() == 'n':
+                        break
+
         except grpc.RpcError as e:
             print(f"Erro ao pesquisar: {e}")
 
-
 if __name__ == "__main__":
-    d = Downloader()
+    d = Downloader() 
+    novo_url = input("Deseja introduzir novo url? (Y/N) ") 
+    
+    if novo_url.lower() == "y": 
+        url_introduzido = input("Instroduza URL: ") 
+        d.adicionar_url_inicial(url_introduzido) 
+        d.main_loop(max_paginas=10) 
 
-    url_introduzido = input("Instroduza URL: ") 
-    d.adicionar_url_inicial(url_introduzido)
-
-    #d.main_loop(max_paginas=10)
-    d.main_loop()
-
-    termo = ""
-
-    while (True):
-        termo = input("\nPesquisar termo (ou ENTER para sair): ").strip()
-
-        if termo.lower() == "sair":
-            print("A sair...")
-            break
+    elif novo_url.lower() == "n": 
+        print("Usar urls já guardados\n") 
         
+        d.main_loop(max_paginas=10) 
+        #d.main_loop() 
+
+    while (True): 
+        termo = input("\nPesquisar termo (ou 'sair'): ").strip() 
+        if termo.lower() == "sair": 
+            print("A sair...") 
+            break 
         d.pesquisar(termo)
