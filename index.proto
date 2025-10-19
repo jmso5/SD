@@ -1,29 +1,23 @@
-
-syntax = "proto3";
+syntax = "proto3"
 
 package search;
 
 import "google/protobuf/empty.proto";
 
-// Index service definition
-service Index {
-    rpc takeNext (google.protobuf.Empty) returns (TakeNextResponse);
-    rpc putNew (PutNewRequest) returns (google.protobuf.Empty);
-    rpc addToIndex (AddToIndexRequest) returns (google.protobuf.Empty);
-    rpc searchWord (SearchWordRequest) returns (SearchWordResponse);
+//Index service definition
+
+service StorageBarrel{
+    rpc addToIndex (AddToIndexRequest) returns (google.protobuf.Empty)
+    rpc searchWord (SearchWordRequest) return (SearchWordResponse)
 }
 
-service Queue {
-    rpc putNew (PutNewRequest) returns (google.protobuf.Empty);
-    rpc takeNext (google.protobuf.Empty) returns (TakeNextResponse);
-}
-
-message PutNewRequest {
-    string url = 1;
+service Gateway{
+    rpc putNew (PutNewRequest) return (google.protobuf.Empty)
+    rpc takeNext (google.protobuf.Empty) return (TakeNextResponse)
 }
 
 // Messages for addToIndex method
-message AddToIndexRequest {
+message AddToIndexRequest{
     string word = 1;
     string url = 2;
     string title = 3;

@@ -14,6 +14,7 @@ class Downloader:
         self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
         self.queue_stub = self.connect_queue(queue_addr)
 
+
     def connect_barrel(self, addr):
         canal = grpc.insecure_channel(addr)  # cria canal gRPC
         return index_pb2_grpc.IndexStub(canal)  # cria stub (cliente)
@@ -160,6 +161,7 @@ class Downloader:
                     self.urls_a_visitar.put(link)
     '''
 
+    
     def pesquisar(self, termo):
         try:
             resposta = self.barrel_stub.searchWord(index_pb2.SearchWordRequest(word=termo))
