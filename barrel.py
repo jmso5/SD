@@ -22,8 +22,8 @@ class IndexServicer(index_pb2_grpc.IndexServicer, index_pb2_grpc.QueueServicer):
     def addToIndex(self, request, context):
         palavra = request.word.lower()
         url = request.url
-        title = request.url
-        citacao = request.url
+        title = request.title
+        citacao = request.citacao
 
         if palavra not in self.indice_invertido:
             self.indice_invertido[palavra] = set()

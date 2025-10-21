@@ -117,7 +117,15 @@ class Downloader:
             for palavra in palavras:
                 if palavra.isalpha():
                     try:
-                        self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
+                        #self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
+                        self.barrel_stub.addToIndex(
+                            index_pb2.AddToIndexRequest(
+                                word=palavra,
+                                url=info["url"],
+                                title=info["titulo"],
+                                citacao=info["texto"][:200]  # primeiros 200 carateres da página
+                            )
+                        )
                     except grpc.RpcError as e:
                         print(f"Erro RPC: {e}")
 
@@ -178,6 +186,7 @@ class Downloader:
                 grupo = resultados[i:i+10]
                 print(f"\n--- Página {i//10 + 1} ---")
                 for r in grupo:
+                    # TODO está a pôr url em tudo...
                     print(f"\nTÍTULO -> {r.title}")
                     print(f"URL -> {r.url}")
                     print(f"CITAÇÃO -> {r.citacao[:200]}...")  # primeiros 200 chars
