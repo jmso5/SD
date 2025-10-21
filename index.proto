@@ -8,12 +8,12 @@ import "google/protobuf/empty.proto";
 
 service StorageBarrel{
     rpc addToIndex (AddToIndexRequest) returns (google.protobuf.Empty)
-    rpc searchWord (SearchWordRequest) return (SearchWordResponse)
+    rpc searchWord (SearchWordRequest) returns (SearchWordResponse)
 }
 
 service Gateway{
-    rpc putNew (PutNewRequest) return (google.protobuf.Empty)
-    rpc takeNext (google.protobuf.Empty) return (TakeNextResponse)
+    rpc putNew (PutNewRequest) returns (google.protobuf.Empty)
+    rpc takeNext (google.protobuf.Empty) returns (TakeNextResponse)
 }
 
 // Messages for addToIndex method
@@ -32,7 +32,7 @@ message SearchWordRequest {
 message SearchResult {
     string url = 1;
     string title = 2;
-    string citacao = 3;
+    string text = 3;
 }
 
 message SearchWordResponse {

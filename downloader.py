@@ -8,20 +8,20 @@ import index_pb2_grpc
 from google.protobuf import empty_pb2
 
 class Downloader:
-    def __init__(self, queue_addr="localhost:8182", barrel_address = "localhost:8183"):
+    def __init__(self, barrel_address = "localhost:8183"):
         self.urls_a_visitar = Queue()   # fila de URLs por visitar
         self.urls_visitadas = set()     # fila de URLs já visitados
-        self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
-        self.queue_stub = self.connect_queue(queue_addr)
+        self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel  
+        #self.queue_stub = self.connect_queue(queue_addr)
 
 
     def connect_barrel(self, addr):
         canal = grpc.insecure_channel(addr)  # cria canal gRPC
         return index_pb2_grpc.IndexStub(canal)  # cria stub (cliente)
 
-    def connect_queue(self, addr):
+    """def connect_queue(self, addr):
         canal = grpc.insecure_channel(addr)
-        return index_pb2_grpc.QueueStub(canal)
+        return index_pb2_grpc.QueueStub(canal)"""
     
     def adicionar_url_inicial(self, url):
         """
@@ -90,7 +90,9 @@ class Downloader:
     def main_loop(self, max_paginas=1000):
         paginas_processadas = 0
         while paginas_processadas < max_paginas:
-            resposta = self.queue_stub.takeNext(empty_pb2.Empty())
+            #resposta = self.queue_stub.takeNext(empty_pb2.Empty())
+            resposta = self.barrel_stub.takeNext(empty_pb2.Empty())
+
             url = resposta.url
             
             if not url:
@@ -115,7 +117,15 @@ class Downloader:
             for palavra in palavras:
                 if palavra.isalpha():
                     try:
-                        self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
+                        #self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
+                        self.barrel_stub.addToIndex(
+                            index_pb2.AddToIndexRequest(
+                                word=palavra,
+                                url=info["url"],
+                                title=info["titulo"],
+                                citacao=info["texto"][:200]  # primeiros 200 carateres da página
+                            )
+                        )
                     except grpc.RpcError as e:
                         print(f"Erro RPC: {e}")
 
@@ -123,7 +133,8 @@ class Downloader:
             for link in info["links"]:
                 if link not in self.urls_visitadas and self.validador_url(link):
                     try:
-                        self.queue_stub.putNew(index_pb2.PutNewRequest(url=link))
+                        #self.queue_stub.putNew(index_pb2.PutNewRequest(url=link))
+                        self.barrel_stub.putNew(index_pb2.PutNewRequest(url=link))
                     except grpc.RpcError as e:
                         print(f"Erro RPC ao adicionar URL à Queue: {e}")
 
@@ -175,6 +186,7 @@ class Downloader:
                 grupo = resultados[i:i+10]
                 print(f"\n--- Página {i//10 + 1} ---")
                 for r in grupo:
+                    # TODO está a pôr url em tudo...
                     print(f"\nTÍTULO -> {r.title}")
                     print(f"URL -> {r.url}")
                     print(f"CITAÇÃO -> {r.citacao[:200]}...")  # primeiros 200 chars

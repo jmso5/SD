@@ -2,6 +2,7 @@ import grpc
 import index_pb2
 import index_pb2_grpc
 from google.protobuf import empty_pb2
+import json
 
 
 class Client:
@@ -9,6 +10,15 @@ class Client:
     def __init__(self, sever_ip, server_port):
         self.channel = grpc.insecure_channel(f"{sever_ip}:{server_port}") # cria canal gRPC com o gateway
         self.stub = index_pb2_grpc.IndexStub(self.channel) # cria stub (cliente)
+
+
+
+    def statistics(self):
+        """
+        Método que obtém as estatísticas do sistema.
+        Apresenta as 10 pesquisas mais comuns, a lista de barrels ativos e os respetivos tamanhos dos indices 
+        e o tempo médio de resposta a pesquisas medido pela Gateway descriminado por Barrel (em décimas de segundo).
+        """
 
 
     def menu(self):
@@ -38,9 +48,27 @@ class Client:
 
                 elif response == "2":
                     palavra = input("Insira a palavra(s) que pretende pesquisar: ")
+
+                    
                 
                 elif response == "3":
-                    print("Estatísticas do sistema ainda não implementadas.")
+                    print("Estatísticas do sistema:")
+                
+                elif response == "4":
+                    print("A sair...")
+                    break
+                else:
+                    print("Opção inválida. Por favor, escolha uma opção entre 1 e 4.")
 
             except grpc.RpcError as e:
                 print(f"Erro ao processar URL {url}: {e}")
+
+def load_config(file_path):
+    with(open(file_path, 'r')) as f:
+        return json.load(f)
+
+if __name__ == "__main__":
+    #python client.py
+    config = load_config('config.json')
+    client = Client(config['gateway']['ip'], config['gateway']['port']) #inicia cliente com o ip e porta do gateway (definidos no config.json)
+    client.menu()
