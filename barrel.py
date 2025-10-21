@@ -29,15 +29,22 @@ class IndexServicer(index_pb2_grpc.IndexServicer, index_pb2_grpc.QueueServicer):
             self.indice_invertido[palavra] = set()
         self.indice_invertido[palavra].add((url, title, citacao))
 
-        print(f"[+] Adicionada '{palavra}' -> {url}")
+        print(f"[Adicionada] '{palavra}' -> {url}")
         return empty_pb2.Empty()
 
     def searchWord(self, request, context):
         termo = request.word.lower()
-        resultados = [
-            index_pb2.SearchResult(url=url, title=title, citacao=citacao)
-            for url, title, citacao in self.indice_invertido.get(termo, [])
-        ]
+        resultados = []
+
+        for url, title, citacao in self.indice_invertido.get(termo, []):
+            resultados.append(
+                index_pb2.SearchResult(
+                    url=url,
+                    title=title,
+                    citacao=citacao
+                )
+            )
+
         print(f"Pesquisa '{termo}' -> {len(resultados)} resultados")
         return index_pb2.SearchWordResponse(results=resultados)
 
@@ -51,37 +58,37 @@ class IndexServicer(index_pb2_grpc.IndexServicer, index_pb2_grpc.QueueServicer):
                     for url in urls:
                         self.fila.put(url)
                         self.urls_guardados.add(url)
-                print(f"[✓] Fila carregada com {len(self.urls_guardados)} URLs.")
+                print(f"[Fila carregada] com {len(self.urls_guardados)} URLs.")
             except Exception as e:
-                print(f"[!] Erro ao carregar fila: {e}")
+                print(f"[Erro] ao carregar fila: {e}")
 
     def guardar_fila(self):
         try:
             with open(self.ficheiro_fila, "wb") as f:
                 pickle.dump(list(self.urls_guardados), f)
-            print(f"[✓] Fila guardada ({len(self.urls_guardados)} URLs).")
+            print(f"[Fila guardada] ({len(self.urls_guardados)} URLs).")
         except Exception as e:
-            print(f"[!] Erro ao guardar fila: {e}")
+            print(f"[Erro] ao guardar fila: {e}")
 
     def putNew(self, request, context):
         url = request.url.strip()
         if url and url not in self.urls_guardados:
             self.fila.put(url)
             self.urls_guardados.add(url)
-            print(f"[+] URL adicionado à fila: {url}")
+            print(f"[Adicionado] URL à fila: {url}")
             self.guardar_fila()
         else:
-            print(f"[!] URL duplicado ou inválido: {url}")
+            print(f"[URL] duplicado ou inválido: {url}")
         return empty_pb2.Empty()
 
     def takeNext(self, request, context):
         if not self.fila.empty():
             url = self.fila.get()
-            print(f"[→] Entregue ao downloader: {url}")
+            print(f"[Entregue] ao downloader: {url}")
             self.guardar_fila()
             return index_pb2.TakeNextResponse(url=url)
         else:
-            print("[!] Fila vazia.")
+            print("[Fila vazia].")
             return index_pb2.TakeNextResponse(url="")
 
 # ------------------ SERVIDOR ------------------

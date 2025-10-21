@@ -32,7 +32,7 @@ message SearchWordRequest {
 message SearchResult {
     string url = 1;
     string title = 2;
-    string citacao = 3;
+    string text = 3;
 }
 
 message SearchWordResponse {
