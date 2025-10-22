@@ -8,6 +8,7 @@ import index_pb2_grpc
 from google.protobuf import empty_pb2
 
 class Downloader:
+    # TODO mudar isto pq o barrel aqui está estático!
     def __init__(self, barrel_address = "localhost:8183"):
         self.urls_a_visitar = Queue()   # fila de URLs por visitar
         self.urls_visitadas = set()     # fila de URLs já visitados
@@ -186,7 +187,6 @@ class Downloader:
                 grupo = resultados[i:i+10]
                 print(f"\n--- Página {i//10 + 1} ---")
                 for r in grupo:
-                    # TODO está a pôr url em tudo...
                     print(f"\nTÍTULO -> {r.title}")
                     print(f"URL -> {r.url}")
                     print(f"CITAÇÃO -> {r.citacao[:200]}...")  # primeiros 200 chars
