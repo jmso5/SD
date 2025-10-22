@@ -7,7 +7,7 @@ from queue import Queue
 import pickle
 import os
 
-class IndexServicer(index_pb2_grpc.IndexServicer, index_pb2_grpc.QueueServicer):
+class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.GatewayServicer):
     def __init__(self, ficheiro_fila="urls_queue.pkl"):
         self.indice_invertido = {}
 
@@ -96,9 +96,9 @@ class IndexServicer(index_pb2_grpc.IndexServicer, index_pb2_grpc.QueueServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 
-    servico = IndexServicer()
-    index_pb2_grpc.add_IndexServicer_to_server(servico, server)
-    index_pb2_grpc.add_QueueServicer_to_server(servico, server)
+    servico = BarrelServicer()
+    index_pb2_grpc.add_StorageBarrelServicer_to_server(servico, server)
+    index_pb2_grpc.add_GatewayServicer_to_server(servico, server)
 
     server.add_insecure_port('[::]:8183')
     server.start()

@@ -3,25 +3,38 @@
         "ip": "127.0.0.1",
         "port": 8080
     },
-    "downloarder":{
-        "ip":"127.0.0.1",
-        "port": 8081
-    },
-    "barrel":[
+    "downloarders":[
+        {
+            "id": "downloader_1",
+            "ip":"127.0.0.1",
+            "port": 8081
+        },
+        {
+            "id": "downloader_2",
+            "ip": "127.0.0.1",
+            "port": 8082   
+        },
+        {
+            "id": "downloader_3",
+            "ip": "127.0.0.1",
+            "port": 8083  
+        }
+    ],
+    "barrels":[
         {
             "id": "barrel_1",
             "ip":"127.0.0.1",
-            "port":8082
+            "port":8084
         },
         {
             "id": "barrel_2",
             "ip":"127.0.0.1",
-            "port":8083
+            "port":8085
         },
         {
             "id": "barrel_3",
-            "ip":"127.0.0.1",
-            "port":8084
+            "ip": "127.0.0.1",
+            "port": 8086
         }
 
     ]

@@ -8,21 +8,19 @@ import index_pb2_grpc
 from google.protobuf import empty_pb2
 
 class Downloader:
-    # TODO mudar isto pq o barrel aqui está estático!
     def __init__(self, barrel_address = "localhost:8183"):
         self.urls_a_visitar = Queue()   # fila de URLs por visitar
         self.urls_visitadas = set()     # fila de URLs já visitados
         self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
-        #self.queue_stub = self.connect_queue(queue_addr)
-
+        self.gateway_stub = self.connect_gateway(barrel_address)         # para takeNext e putNew
 
     def connect_barrel(self, addr):
         canal = grpc.insecure_channel(addr)  # cria canal gRPC
-        return index_pb2_grpc.IndexStub(canal)  # cria stub (cliente)
-
-    """def connect_queue(self, addr):
+        return index_pb2_grpc.StorageBarrelStub(canal)  # cria stub (cliente)
+    
+    def connect_gateway(self, addr):
         canal = grpc.insecure_channel(addr)
-        return index_pb2_grpc.QueueStub(canal)"""
+        return index_pb2_grpc.GatewayStub(canal)
     
     def adicionar_url_inicial(self, url):
         """
@@ -92,7 +90,7 @@ class Downloader:
         paginas_processadas = 0
         while paginas_processadas < max_paginas:
             #resposta = self.queue_stub.takeNext(empty_pb2.Empty())
-            resposta = self.barrel_stub.takeNext(empty_pb2.Empty())
+            resposta = self.gateway_stub.takeNext(empty_pb2.Empty())
 
             url = resposta.url
             
@@ -135,7 +133,7 @@ class Downloader:
                 if link not in self.urls_visitadas and self.validador_url(link):
                     try:
                         #self.queue_stub.putNew(index_pb2.PutNewRequest(url=link))
-                        self.barrel_stub.putNew(index_pb2.PutNewRequest(url=link))
+                        self.gateway_stub.putNew(index_pb2.PutNewRequest(url=link))
                     except grpc.RpcError as e:
                         print(f"Erro RPC ao adicionar URL à Queue: {e}")
 
@@ -187,6 +185,7 @@ class Downloader:
                 grupo = resultados[i:i+10]
                 print(f"\n--- Página {i//10 + 1} ---")
                 for r in grupo:
+                    # TODO está a pôr url em tudo...
                     print(f"\nTÍTULO -> {r.title}")
                     print(f"URL -> {r.url}")
                     print(f"CITAÇÃO -> {r.citacao[:200]}...")  # primeiros 200 chars
@@ -202,6 +201,9 @@ class Downloader:
 
 if __name__ == "__main__":
     d = Downloader() 
+    d.main_loop(max_paginas=10) 
+
+    '''d = Downloader() 
     novo_url = input("Deseja introduzir novo url? (Y/N) ") 
     
     if novo_url.lower() == "y": 
@@ -220,4 +222,4 @@ if __name__ == "__main__":
         if termo.lower() == "sair": 
             print("A sair...") 
             break 
-        d.pesquisar(termo)
+        d.pesquisar(termo)'''
