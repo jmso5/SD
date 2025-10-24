@@ -6,6 +6,8 @@ import index_pb2_grpc
 from queue import Queue
 import pickle
 import os
+import sys 
+import json
 
 class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.GatewayServicer):
     def __init__(self, ficheiro_fila="urls_queue.pkl"):
@@ -92,22 +94,53 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
             return index_pb2.TakeNextResponse(url="")
 
 # ------------------ SERVIDOR ------------------
-
-def serve():
+def server(port, barrel_id):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 
     servico = BarrelServicer()
     index_pb2_grpc.add_StorageBarrelServicer_to_server(servico, server)
     index_pb2_grpc.add_GatewayServicer_to_server(servico, server)
 
-    server.add_insecure_port('[::]:8183')
+    server.add_insecure_port(f"0.0.0.0:{port}")
     server.start()
-    print("Barrel (Index + Queue) iniciado na porta 8183")
+    print(f"Barrel {barrel_id} iniciado na porta {port}")
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:
         print("A encerrar o Barrel...")
         server.stop(0)
 
+def load_config(file_path='config.json'):
+    """Carrega o ficheiro de configuração."""
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"ERRO: Ficheiro de configuração '{file_path}' não encontrado.")
+        sys.exit(1)
+
+    
 if __name__ == '__main__':
-    serve()
+    # 1. Verifica e obtém o ID do argumento
+    if len(sys.argv) < 2:
+        print("ERRO: Uso correto é: python barrel.py <ID_DO_BARREL> (ex: barrel_1)")
+        sys.exit(1)
+    
+    barrel_id = sys.argv[1] # O argumento (ex: 'barrel_1')
+    
+    # 2. Carrega a configuração
+    config = load_config()
+    
+    port = None
+    
+    # 3. Procura a porta que corresponde ao ID no config.json
+    for barrel_config in config['barrels']:
+        if barrel_config['id'] == barrel_id:
+            port = barrel_config['port']
+            break
+
+    if port is None:
+        print(f"ERRO: ID do Barrel '{barrel_id}' não encontrado na secção 'barrels' do config.json.")
+        sys.exit(1)
+
+    server(port, barrel_id)

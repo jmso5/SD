@@ -1,5 +1,5 @@
 import grpc
-import index_pb2_grpc
+import index_pb2
 import index_pb2_grpc
 from google.protobuf import empty_pb2
 import queue    
@@ -8,7 +8,7 @@ import random
 from concurrent import futures
 
 
-class Gateway(index_pb2_grpc.Gateway):
+class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServicer):
 
     def __init__(self, barrel_addresses, queue_address='localhost:8284'):
        
@@ -40,7 +40,7 @@ class Gateway(index_pb2_grpc.Gateway):
         #Verifica se a palavra já está na cache
         if request.word in self.cache:
             results = self.cache[request.word]
-            return index_pb2_grpc.SearchWordResponse(results=results)
+            return index_pb2.SearchWordResponse(results=results)
         
         # Palavra não está na cache, pesquisa nos Barrels
         else:
@@ -50,10 +50,11 @@ class Gateway(index_pb2_grpc.Gateway):
                     response = stub.searchWord(request)
                     if response.results:
                         self.cache[request.word] = response.results
-                        return response
+                        #return response
+                        return index_pb2.SearchWordResponse(results=results)
                 except grpc.RpcError as e:
                     print(f"Erro ao contactar o Barrel: {e}")
-            return index_pb2_grpc.SearchWordResponse(results=[]) # Retorna resultados vazios se não encontrar nada após as tentativas
+            return index_pb2.SearchWordResponse(results=[]) # Retorna resultados vazios se não encontrar nada após as tentativas
       
 
 
@@ -99,9 +100,9 @@ class Gateway(index_pb2_grpc.Gateway):
 
         try:
             url = self.urls_a_visitar.get_nowait()
-            return index_pb2_grpc.TakeNextResponse(url=url)
+            return index_pb2.TakeNextResponse(url=url)
         except queue.Empty:
-            return index_pb2_grpc.TakeNextResponse(url="")
+            return index_pb2.TakeNextResponse(url="")
         
 def load_config():
     with open('config.json', 'r') as f:
@@ -120,8 +121,12 @@ if __name__ == "__main__":
     barrel_addresses = [f"{b['ip']}:{b['port']}" for b in config['barrels']]
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    
     gateway = Gateway(barrel_addresses)
     index_pb2_grpc.add_GatewayServicer_to_server(gateway, server)
+
+    index_pb2_grpc.add_GatewayServicer_to_server(gateway, server) # adiciona serviço Gateway
+    index_pb2_grpc.add_StorageBarrelServicer_to_server(gateway, server) # adiciona serviço StorageBarrel
 
     porta = config['gateway']['port']
     server.add_insecure_port(f"[::]:{porta}")

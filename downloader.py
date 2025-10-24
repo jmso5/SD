@@ -6,17 +6,23 @@ import grpc # Comunicação RPC com o Barrel
 import index_pb2
 import index_pb2_grpc
 from google.protobuf import empty_pb2
+import sys
+import json
 
 class Downloader:
-    def __init__(self, barrel_address = "localhost:8183"):
+    def __init__(self, barrel_address, gateway_address):
         self.urls_a_visitar = Queue()   # fila de URLs por visitar
         self.urls_visitadas = set()     # fila de URLs já visitados
         self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
-        self.gateway_stub = self.connect_gateway(barrel_address)         # para takeNext e putNew
+        self.gateway_stub = self.connect_gateway(gateway_address)         # para takeNext e putNew
 
+    # alteração para conectar todos os barrels
     def connect_barrel(self, addr):
-        canal = grpc.insecure_channel(addr)  # cria canal gRPC
-        return index_pb2_grpc.StorageBarrelStub(canal)  # cria stub (cliente)
+        stubs = []
+        for ad in addr:
+                canal = grpc.insecure_channel(ad)
+                stubs.append(index_pb2_grpc.StorageBarrelStub(canal))
+        return stubs
     
     def connect_gateway(self, addr):
         canal = grpc.insecure_channel(addr)
@@ -95,7 +101,7 @@ class Downloader:
             url = resposta.url
             
             if not url:
-                print("[!] Fila vazia, a esperar...")
+                print("[Fila vazia], a esperar...")
                 break
 
             if url in self.urls_visitadas:
@@ -115,18 +121,19 @@ class Downloader:
             palavras = info["texto"].lower().split()
             for palavra in palavras:
                 if palavra.isalpha():
-                    try:
-                        #self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
-                        self.barrel_stub.addToIndex(
-                            index_pb2.AddToIndexRequest(
-                                word=palavra,
-                                url=info["url"],
-                                title=info["titulo"],
-                                citacao=info["texto"][:200]  # primeiros 200 carateres da página
+                    for stub in self.barrel_stub:
+                        try:
+                            #self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
+                            stub.barrel_stub.addToIndex(
+                                index_pb2.AddToIndexRequest(
+                                    word=palavra,
+                                    url=info["url"],
+                                    title=info["titulo"],
+                                    citacao=info["texto"][:200]  # primeiros 200 carateres da página
+                                )
                             )
-                        )
-                    except grpc.RpcError as e:
-                        print(f"Erro RPC: {e}")
+                        except grpc.RpcError as e:
+                            print(f"Erro RPC: {e}")
 
             # Adiciona links encontrados à Queue
             for link in info["links"]:
@@ -199,9 +206,23 @@ class Downloader:
         except grpc.RpcError as e:
             print(f"Erro ao pesquisar: {e}")
 
+def load_config(file_path='config.json'):
+    """Carrega o ficheiro de configuração."""
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"ERRO: Ficheiro de configuração '{file_path}' não encontrado.")
+        sys.exit(1)
+
 if __name__ == "__main__":
-    d = Downloader() 
-    d.main_loop(max_paginas=10) 
+    config = load_config('config.json')
+
+    gateway_addr = f"{config['gateway']['ip']}:{config['gateway']['port']}"
+    barrel_addrs = [f"{b['ip']}:{b['port']}" for b in config['barrels']]
+
+    d = Downloader(barrel_addrs, gateway_addr)
+    d.main_loop(max_paginas=10)
 
     '''d = Downloader() 
     novo_url = input("Deseja introduzir novo url? (Y/N) ") 
