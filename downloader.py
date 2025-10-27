@@ -17,16 +17,16 @@ class Downloader:
         self.gateway_stub = self.connect_gateway(gateway_address)         # para takeNext e putNew
 
     # alteração para conectar todos os barrels
-    def connect_barrel(self, addr):
+    def connect_barrel(self, addrs):
         stubs = []
-        for ad in addr:
-                canal = grpc.insecure_channel(ad)
-                stubs.append(index_pb2_grpc.StorageBarrelStub(canal))
+        for addr in addrs:
+                channel = grpc.insecure_channel(addr) 
+                stubs.append(index_pb2_grpc.StorageBarrelStub(channel))
         return stubs
     
     def connect_gateway(self, addr):
-        canal = grpc.insecure_channel(addr)
-        return index_pb2_grpc.GatewayStub(canal)
+        channel = grpc.insecure_channel(addr)
+        return index_pb2_grpc.GatewayStub(channel)
     
     def adicionar_url_inicial(self, url):
         """
@@ -124,7 +124,7 @@ class Downloader:
                     for stub in self.barrel_stub:
                         try:
                             #self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
-                            stub.barrel_stub.addToIndex(
+                            stub.addToIndex(
                                 index_pb2.AddToIndexRequest(
                                     word=palavra,
                                     url=info["url"],
@@ -216,10 +216,36 @@ def load_config(file_path='config.json'):
         sys.exit(1)
 
 if __name__ == "__main__":
+
+    # 1. Verifica e obtém o ID do argumento
+
+    if len(sys.argv) < 2:
+        print("ERRO: Uso correto é: python downloader.py <ID_DO_DOWNLOADER> (ex: downloader_1)")
+        sys.exit(1)
+
+    downloader_id = sys.argv[1] # O argumento 
+
+    # 2. Carrega a configuração
     config = load_config('config.json')
 
+    port = None
+
+    for downloader_config in config['downloaders']:
+        if downloader_config['id'] == downloader_id:
+            port = downloader_config['port']
+            break
+
+    if port is None:
+        print(f"ERRO: ID do Downloader '{downloader_id}' não encontrado na secção 'downloaders' do config.json.")
+        sys.exit(1) 
+
+    # obter endereços dos barrels
+    barrel_addrs = []
+    for barrel_config in config['barrels']:
+        barrel_addrs.append(f"{barrel_config['ip']}:{barrel_config['port']}") 
+
+    # obter endereço do gateway
     gateway_addr = f"{config['gateway']['ip']}:{config['gateway']['port']}"
-    barrel_addrs = [f"{b['ip']}:{b['port']}" for b in config['barrels']]
 
     d = Downloader(barrel_addrs, gateway_addr)
     d.main_loop(max_paginas=10)

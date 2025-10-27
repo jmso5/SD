@@ -10,14 +10,28 @@ import sys
 import json
 
 class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.GatewayServicer):
-    def __init__(self, ficheiro_fila="urls_queue.pkl"):
+    def __init__(self, barrel_id, replica_barrels, ficheiro_fila="urls_queue.pkl"):
+        self.barrel_id = barrel_id
         self.indice_invertido = {}
+
+        # --- Conexão com réplicas de Barrels ---
+        self.replica_stubs = self.connect_replica_barrels(replica_barrels)
+        print(f"[Iniciado] Barrel com {len(self.replica_stubs)} réplicas conectadas.")
 
         # ---- Fila de URLs (ex-QueueServicer) ----
         self.fila = Queue()
-        self.urls_guardados = set()
+        self.urls_guardados = set() 
         self.ficheiro_fila = ficheiro_fila
         self.carregar_fila()
+    
+
+    def connect_replica_barrels(self, addresses):
+        stubs = []
+        for addr in addresses:
+            channel = grpc.insecure_channel(addr)
+            stub = index_pb2_grpc.StorageBarrelStub(channel)
+            stubs.append(stub)
+        return stubs
 
     # ------------------ INDEX PART ------------------
 
@@ -74,11 +88,19 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
 
     def putNew(self, request, context):
         url = request.url.strip()
+
         if url and url not in self.urls_guardados:
             self.fila.put(url)
             self.urls_guardados.add(url)
             print(f"[Adicionado] URL à fila: {url}")
             self.guardar_fila()
+
+            for stub in self.replica_barrels:
+                try:
+                    stub.putNew(request)
+                    print(f"[Replicado] URL para réplica: {url}")
+                except grpc.RpcError as e:
+                    print(f"[Erro] ao replicar URL para réplica: {e}")
         else:
             print(f"[URL] duplicado ou inválido: {url}")
         return empty_pb2.Empty()
@@ -86,8 +108,22 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
     def takeNext(self, request, context):
         if not self.fila.empty():
             url = self.fila.get()
+
+            if url in self.urls_guardados:
+                self.urls_guardados.remove(url)
+                
+
             print(f"[Entregue] ao downloader: {url}")
             self.guardar_fila()
+
+            for stub in self.replica_barrels:
+                try:
+                    stub.takeNext(request)
+                    print(f"[Replicado] remoção de URL para réplica: {url}")
+                except grpc.RpcError as e:
+                    print(f"[Erro] ao replicar remoção de URL para réplica: {e}")
+
+
             return index_pb2.TakeNextResponse(url=url)
         else:
             print("[Fila vazia].")
@@ -97,7 +133,15 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
 def server(port, barrel_id):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 
-    servico = BarrelServicer()
+
+    replica_barrels = []
+    config = load_config()
+    for barrel_config in config['barrels']:
+        if barrel_config['id'] != barrel_id:
+            replica_barrels.append(f"{barrel_config['ip']}:{barrel_config['port']}")
+    
+
+    servico = BarrelServicer(barrel_id, replica_barrels)
     index_pb2_grpc.add_StorageBarrelServicer_to_server(servico, server)
     index_pb2_grpc.add_GatewayServicer_to_server(servico, server)
 

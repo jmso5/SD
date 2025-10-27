@@ -17,11 +17,8 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         for address in barrel_addresses:
             stub = index_pb2_grpc.StorageBarrelStub(grpc.insecure_channel(address))
             self.stubs.append(stub)
+      
 
-        #self.queue_channel = grpc.insecure_channel(queue_address)
-        #self.queue_stub = index_pb2_grpc.QueueStub(self.queue_channel)
-
-        self.urls_a_visitar = queue.Queue()
         self.cache = {} # Cache local para palavras já pesquisadas evitando chamadas repetidas ao Barrel
         self.most_common_searches = {} # Dicionário para contar as pesquisas mais comuns, chave: palavra, valor: número de pesquisas
 
@@ -83,26 +80,49 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
 
 
 
-    def putNew(self, request, context):
+    def putNew(self, request, context, max_retries=5):
         """
-        Método que recebe um pedido do cliente para adicionar um novo URL à fila de URLs a visitar.
+        Método que recebe um pedido do cliente para adicionar um novo URL à fila de URLs a visitar,
+        encaminhando o pedido para um Barrel aleatório com retry.
         """
 
-        self.urls_a_visitar.put(request.url)
+        for attempt in range(max_retries):
+            stub = random.choice(self.stubs) # Escolhe um Barrel aleatoriamente
+            
+            try:
+                # Encaminha o pedido PutNew para o Barrel
+                response = stub.putNew(request) 
+                print(f"[Gateway] Encaminhado putNew para Barrel: {request.url}")
+                return response 
+            except grpc.RpcError as e:
+                # A tentativa falhou, continua para a próxima tentativa ou sai
+                print(f"[Gateway] Erro ao contactar Barrel em putNew: {e}")
+        
+
+        # Se falhar após todas as tentativas
         return empty_pb2.Empty()
     
-    def takeNext(self, request, context):
+    def takeNext(self, request, context, max_retries=5):
         """
-        Verifica se tem URLs na fila de URLs a visitar.
-        Retorna o próximo URL ou uma string vazia se a fila estiver vazia.
-        Usa o método get_nowait() para evitar bloqueios dos downloaders no acesso à queue.
+        Verifica se tem URLs na fila de URLs a visitar, solicitando a um Barrel aleatório com retry.
         """
+        for attempt in range(max_retries):
+            # Escolhe um Barrel aleatoriamente
+            stub = random.choice(self.stubs)
+            
+            try:
+                response = stub.takeNext(request) 
 
-        try:
-            url = self.urls_a_visitar.get_nowait()
-            return index_pb2.TakeNextResponse(url=url)
-        except queue.Empty:
-            return index_pb2.TakeNextResponse(url="")
+                # Se o Barrel retornar um URL válido, retorna imediatamente
+                if response.url:
+                    return response
+                
+                # Se o Barrel retornar URL vazio, tenta outro Barrel random
+            except grpc.RpcError as e:
+                print(f"[Gateway] Erro ao contactar Barrel em takeNext: {e}")
+
+        # Se todos os Barrels estiverem indisponíveis ou retornarem fila vazia após as tentativas
+        return index_pb2.TakeNextResponse(url="") # Retorna URL vazio
         
 def load_config():
     with open('config.json', 'r') as f:
@@ -110,15 +130,13 @@ def load_config():
     return config
 
 if __name__ == "__main__":
-    '''config = load_config()
-    barrel_addresses = []
-    for barrel in config['barrels']:
-        address = f"{barrel['ip']}:{barrel['port']}"
-        barrel_addresses.append(address)
 
-    gateway = Gateway(config['barrels'])'''
     config = load_config()
-    barrel_addresses = [f"{b['ip']}:{b['port']}" for b in config['barrels']]
+    barrel_addresses = []
+    downloader_addresses = []
+
+    for addr in config['barrels']:
+        barrel_addresses.append(f"{addr['ip']}:{addr['port']}")
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     
@@ -127,6 +145,7 @@ if __name__ == "__main__":
 
     index_pb2_grpc.add_GatewayServicer_to_server(gateway, server) # adiciona serviço Gateway
     index_pb2_grpc.add_StorageBarrelServicer_to_server(gateway, server) # adiciona serviço StorageBarrel
+
 
     porta = config['gateway']['port']
     server.add_insecure_port(f"[::]:{porta}")
