@@ -47,6 +47,16 @@ class StorageBarrelStub(object):
                 request_serializer=index__pb2.SearchWordRequest.SerializeToString,
                 response_deserializer=index__pb2.SearchWordResponse.FromString,
                 _registered_method=True)
+        self.putNew = channel.unary_unary(
+                '/search.StorageBarrel/putNew',
+                request_serializer=index__pb2.PutNewRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+        self.takeNext = channel.unary_unary(
+                '/search.StorageBarrel/takeNext',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=index__pb2.TakeNextResponse.FromString,
+                _registered_method=True)
 
 
 class StorageBarrelServicer(object):
@@ -66,6 +76,18 @@ class StorageBarrelServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def putNew(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def takeNext(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_StorageBarrelServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -78,6 +100,16 @@ def add_StorageBarrelServicer_to_server(servicer, server):
                     servicer.searchWord,
                     request_deserializer=index__pb2.SearchWordRequest.FromString,
                     response_serializer=index__pb2.SearchWordResponse.SerializeToString,
+            ),
+            'putNew': grpc.unary_unary_rpc_method_handler(
+                    servicer.putNew,
+                    request_deserializer=index__pb2.PutNewRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'takeNext': grpc.unary_unary_rpc_method_handler(
+                    servicer.takeNext,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=index__pb2.TakeNextResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -136,6 +168,60 @@ class StorageBarrel(object):
             '/search.StorageBarrel/searchWord',
             index__pb2.SearchWordRequest.SerializeToString,
             index__pb2.SearchWordResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def putNew(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.StorageBarrel/putNew',
+            index__pb2.PutNewRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def takeNext(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.StorageBarrel/takeNext',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            index__pb2.TakeNextResponse.FromString,
             options,
             channel_credentials,
             insecure,

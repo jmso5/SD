@@ -16,8 +16,6 @@ class Gateway(index_pb2_grpc.GatewayServicer):
         for address in barrel_addresses:
             stub = index_pb2_grpc.StorageBarrelStub(grpc.insecure_channel(address))
             self.stubs.append(stub)
-      
-        self.url_queue = queue.Queue()
 
         self.cache = {} # Cache local para palavras já pesquisadas evitando chamadas repetidas ao Barrel
         self.most_common_searches = {} # Dicionário para contar as pesquisas mais comuns, chave: palavra, valor: número de pesquisas
@@ -86,7 +84,7 @@ class Gateway(index_pb2_grpc.GatewayServicer):
         encaminhando o pedido para um Barrel aleatório com retry.
         """
 
-        '''for attempt in range(max_retries):
+        for attempt in range(max_retries):
             stub = random.choice(self.stubs) # Escolhe um Barrel aleatoriamente
             
             try:
@@ -96,18 +94,7 @@ class Gateway(index_pb2_grpc.GatewayServicer):
                 return response 
             except grpc.RpcError as e:
                 # A tentativa falhou, continua para a próxima tentativa ou sai
-                print(f"[Gateway] Erro ao contactar Barrel em putNew: {e}")'''
-        
-        for attempt in range(max_retries):
-            try:
-                self.urls_queue.put(request.url)
-                print(f"[Gateway] URL adicionado à fila (tentativa {attempt + 1}): {request.url}")
-                return empty_pb2.Empty()
-            except Exception as e:
-                print(f"[Gateway] Erro ao adicionar URL à fila (tentativa {attempt + 1}): {e}")
-
-        print(f"[Gateway] Falha ao adicionar URL após {max_retries} tentativas.")
-        
+                print(f"[Gateway] Erro ao contactar Barrel em putNew: {e}")
 
         # Se falhar após todas as tentativas
         return empty_pb2.Empty()
@@ -116,7 +103,7 @@ class Gateway(index_pb2_grpc.GatewayServicer):
         """
         Verifica se tem URLs na fila de URLs a visitar, solicitando a um Barrel aleatório com retry.
         """
-        '''for attempt in range(max_retries):
+        for attempt in range(max_retries):
             # Escolhe um Barrel aleatoriamente
             stub = random.choice(self.stubs)
             
@@ -129,20 +116,7 @@ class Gateway(index_pb2_grpc.GatewayServicer):
                 
                 # Se o Barrel retornar URL vazio, tenta outro Barrel random
             except grpc.RpcError as e:
-                print(f"[Gateway] Erro ao contactar Barrel em takeNext: {e}")'''
-        
-        for attempt in range(max_retries):
-            try:
-                if not self.urls_queue.empty():
-                    url = self.urls_queue.get()
-                    print(f"[Gateway] URL retirado da fila (tentativa {attempt + 1}): {url}")
-                    return index_pb2.TakeNextResponse(url=url)
-                else:
-                    print(f"[Gateway] Fila vazia (tentativa {attempt + 1})")
-            except Exception as e:
-                print(f"[Gateway] Erro ao obter URL da fila (tentativa {attempt + 1}): {e}")
-
-        print(f"[Gateway] Nenhum URL disponível após {max_retries} tentativas.")
+                print(f"[Gateway] Erro ao contactar Barrel em takeNext: {e}")
 
         # Se todos os Barrels estiverem indisponíveis ou retornarem fila vazia após as tentativas
         return index_pb2.TakeNextResponse(url="") # Retorna URL vazio

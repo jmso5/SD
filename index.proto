@@ -9,6 +9,8 @@ import "google/protobuf/empty.proto";
 service StorageBarrel{
     rpc addToIndex (AddToIndexRequest) returns (google.protobuf.Empty);
     rpc searchWord (SearchWordRequest) returns (SearchWordResponse);
+    rpc putNew (PutNewRequest) returns (google.protobuf.Empty); 
+    rpc takeNext (google.protobuf.Empty) returns (TakeNextResponse); 
 }
 
 service Gateway{

@@ -47,7 +47,8 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         if palavra not in self.indice_invertido:
             #self.indice_invertido[palavra] = set()
             self.indice_invertido[palavra] = []
-        self.indice_invertido[palavra].add((url, title, citacao))
+        #self.indice_invertido[palavra].add((url, title, citacao))
+        self.indice_invertido[palavra].append(novo_registo)
 
         print(f"[Adicionada] '{palavra}' -> {url} (Revelânica: {links_count})")
         return empty_pb2.Empty()
