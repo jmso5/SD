@@ -6,21 +6,27 @@ import grpc # Comunicação RPC com o Barrel
 import index_pb2
 import index_pb2_grpc
 from google.protobuf import empty_pb2
+import sys
+import json
 
 class Downloader:
-    def __init__(self, barrel_address = "localhost:8183"):
+    def __init__(self, barrel_address, gateway_address):
         self.urls_a_visitar = Queue()   # fila de URLs por visitar
         self.urls_visitadas = set()     # fila de URLs já visitados
         self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
-        self.gateway_stub = self.connect_gateway(barrel_address)         # para takeNext e putNew
+        self.gateway_stub = self.connect_gateway(gateway_address)         # para takeNext e putNew
 
-    def connect_barrel(self, addr):
-        canal = grpc.insecure_channel(addr)  # cria canal gRPC
-        return index_pb2_grpc.StorageBarrelStub(canal)  # cria stub (cliente)
+    # alteração para conectar todos os barrels
+    def connect_barrel(self, addrs):
+        stubs = []
+        for addr in addrs:
+                channel = grpc.insecure_channel(addr) 
+                stubs.append(index_pb2_grpc.StorageBarrelStub(channel))
+        return stubs
     
     def connect_gateway(self, addr):
-        canal = grpc.insecure_channel(addr)
-        return index_pb2_grpc.GatewayStub(canal)
+        channel = grpc.insecure_channel(addr)
+        return index_pb2_grpc.GatewayStub(channel)
     
     def adicionar_url_inicial(self, url):
         """
@@ -115,18 +121,19 @@ class Downloader:
             palavras = info["texto"].lower().split()
             for palavra in palavras:
                 if palavra.isalpha():
-                    try:
-                        #self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
-                        self.barrel_stub.addToIndex(
-                            index_pb2.AddToIndexRequest(
-                                word=palavra,
-                                url=info["url"],
-                                title=info["titulo"],
-                                citacao=info["texto"][:200]  # primeiros 200 carateres da página
+                    for stub in self.barrel_stub:
+                        try:
+                            #self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
+                            stub.addToIndex(
+                                index_pb2.AddToIndexRequest(
+                                    word=palavra,
+                                    url=info["url"],
+                                    title=info["titulo"],
+                                    citacao=info["texto"][:200]  # primeiros 200 carateres da página
+                                )
                             )
-                        )
-                    except grpc.RpcError as e:
-                        print(f"Erro RPC: {e}")
+                        except grpc.RpcError as e:
+                            print(f"Erro RPC: {e}")
 
             # Adiciona links encontrados à Queue
             for link in info["links"]:
@@ -199,9 +206,49 @@ class Downloader:
         except grpc.RpcError as e:
             print(f"Erro ao pesquisar: {e}")
 
+def load_config(file_path='config.json'):
+    """Carrega o ficheiro de configuração."""
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"ERRO: Ficheiro de configuração '{file_path}' não encontrado.")
+        sys.exit(1)
+
 if __name__ == "__main__":
-    d = Downloader() 
-    d.main_loop(max_paginas=10) 
+
+    # 1. Verifica e obtém o ID do argumento
+
+    if len(sys.argv) < 2:
+        print("ERRO: Uso correto é: python downloader.py <ID_DO_DOWNLOADER> (ex: downloader_1)")
+        sys.exit(1)
+
+    downloader_id = sys.argv[1] # O argumento 
+
+    # 2. Carrega a configuração
+    config = load_config('config.json')
+
+    port = None
+
+    for downloader_config in config['downloaders']:
+        if downloader_config['id'] == downloader_id:
+            port = downloader_config['port']
+            break
+
+    if port is None:
+        print(f"ERRO: ID do Downloader '{downloader_id}' não encontrado na secção 'downloaders' do config.json.")
+        sys.exit(1) 
+
+    # obter endereços dos barrels
+    barrel_addrs = []
+    for barrel_config in config['barrels']:
+        barrel_addrs.append(f"{barrel_config['ip']}:{barrel_config['port']}") 
+
+    # obter endereço do gateway
+    gateway_addr = f"{config['gateway']['ip']}:{config['gateway']['port']}"
+
+    d = Downloader(barrel_addrs, gateway_addr)
+    d.main_loop(max_paginas=10)
 
     '''d = Downloader() 
     novo_url = input("Deseja introduzir novo url? (Y/N) ") 

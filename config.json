@@ -3,7 +3,7 @@
         "ip": "127.0.0.1",
         "port": 8080
     },
-    "downloarders":[
+    "downloaders":[
         {
             "id": "downloader_1",
             "ip":"127.0.0.1",
