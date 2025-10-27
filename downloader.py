@@ -95,7 +95,7 @@ class Downloader:
             url = resposta.url
             
             if not url:
-                print("[!] Fila vazia, a esperar...")
+                print("[Fila] vazia, a esperar...")
                 break
 
             if url in self.urls_visitadas:

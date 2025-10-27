@@ -24,26 +24,37 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         url = request.url
         title = request.title
         citacao = request.citacao
+        links_count = request.links_count
+
+        novo_registo = (url, title, citacao, links_count)
 
         if palavra not in self.indice_invertido:
-            self.indice_invertido[palavra] = set()
+            #self.indice_invertido[palavra] = set()
+            self.indice_invertido[palavra] = []
         self.indice_invertido[palavra].add((url, title, citacao))
 
-        print(f"[Adicionada] '{palavra}' -> {url}")
+        print(f"[Adicionada] '{palavra}' -> {url} (Revelânica: {links_count})")
         return empty_pb2.Empty()
 
     def searchWord(self, request, context):
         termo = request.word.lower()
         resultados = []
 
-        for url, title, citacao in self.indice_invertido.get(termo, []):
-            resultados.append(
-                index_pb2.SearchResult(
-                    url=url,
-                    title=title,
-                    citacao=citacao
-                )
+        for temo in self.indice_invertido:
+            resultados_ordenados = sorted(
+                self.indice_invertido[termo],
+                key = lambda x: x[3],
+                reverse= True
             )
+            for url, title, citacao, links_count in resultados_ordenados:
+                resultados.append(
+                    index_pb2.SearchResult(
+                        url=url,
+                        title=title,
+                        text=citacao,
+                        links_count = links_count
+                    )
+                )
 
         print(f"Pesquisa '{termo}' -> {len(resultados)} resultados")
         return index_pb2.SearchWordResponse(results=resultados)
