@@ -99,7 +99,7 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
             print(f"[Erro] ao guardar fila: {e}")
 
     def putNew(self, request, context):
-        url = request.url.strip()
+        '''url = request.url.strip()
 
         if url and url not in self.urls_guardados:
             self.fila.put(url)
@@ -115,30 +115,42 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
                     print(f"[Erro] ao replicar URL para réplica: {e}")
         else:
             print(f"[URL] duplicado ou inválido: {url}")
+        return empty_pb2.Empty()'''
+
+        url = request.url
+
+        if url not in self.urls_guardados:
+            self.fila.put(url)
+            self.urls_guardados.add(url) # Controla duplicados
+            self.guardar_fila() # Guarda o estado da fila no ficheiro local
+
+            print(f"[Fila] Adicionado novo URL: {url}. URLs totais: {self.fila.qsize()}")
+
+            # --- Lógica de Replicação ---
+            # Replicar a adição para as réplicas
+            for stub in self.replica_stubs:
+                try:
+                    # Envia o mesmo pedido para a réplica
+                    stub.putNew(request) 
+                except grpc.RpcError as e:
+                    print(f"[Replica] Falha ao replicar putNew para réplica: {e}")
+            
         return empty_pb2.Empty()
 
-    def takeNext(self, request, context):
-        if not self.fila.empty():
-            url = self.fila.get()
-
-            if url in self.urls_guardados:
-                self.urls_guardados.remove(url)
-                
-
-            print(f"[Entregue] ao downloader: {url}")
-            self.guardar_fila()
-
-            for stub in self.replica_barrels:
-                try:
-                    stub.takeNext(request)
-                    print(f"[Replicado] remoção de URL para réplica: {url}")
-                except grpc.RpcError as e:
-                    print(f"[Erro] ao replicar remoção de URL para réplica: {e}")
+    def takeNext(self, request, context):        
+        try:
+            # Tenta obter o próximo URL da fila
+            url = self.fila.get_nowait() 
+            
+            # Se a fila tinha algo, guarda o estado da fila 
+            self.guardar_fila() 
 
 
+            print(f"[Fila] Entregue URL: {url}. Restam {self.fila.qsize()} URLs.")
             return index_pb2.TakeNextResponse(url=url)
-        else:
-            print("[Fila vazia].")
+
+        except Exception as e:
+            print(f"Erro ao retirar URL da fila: {e}")
             return index_pb2.TakeNextResponse(url="")
 
 # ------------------ SERVIDOR ------------------

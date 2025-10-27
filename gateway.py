@@ -8,7 +8,7 @@ import random
 from concurrent import futures
 
 
-class Gateway(index_pb2_grpc.GatewayServicer):
+class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServicer):
 
     def __init__(self, barrel_addresses):
         self.barrel_addresses = barrel_addresses
@@ -138,10 +138,8 @@ if __name__ == "__main__":
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     
     gateway = Gateway(barrel_addresses)
-    index_pb2_grpc.add_GatewayServicer_to_server(gateway, server)
-
     index_pb2_grpc.add_GatewayServicer_to_server(gateway, server) # adiciona serviço Gateway
-    #index_pb2_grpc.add_StorageBarrelServicer_to_server(gateway, server) # adiciona serviço StorageBarrel
+    index_pb2_grpc.add_StorageBarrelServicer_to_server(gateway, server) # adiciona serviço StorageBarrel
 
 
     porta = config['gateway']['port']

@@ -129,7 +129,8 @@ class Downloader:
                                     word=palavra,
                                     url=info["url"],
                                     title=info["titulo"],
-                                    citacao=info["texto"][:200]  # primeiros 200 carateres da página
+                                    citacao=info["texto"][:200],  # primeiros 200 carateres da página
+                                    links_count=len(info['links'])
                                 )
                             )
                         except grpc.RpcError as e:
