@@ -73,12 +73,13 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         termo = request.word.lower()
         resultados = []
 
-        for termo in self.indice_invertido:
+        if termo in self.indice_invertido:
             resultados_ordenados = sorted(
                 self.indice_invertido[termo],
                 key = lambda x: x[3],
                 reverse= True
             )
+
             for url, title, citacao, links_count in resultados_ordenados:
                 resultados.append(
                     index_pb2.SearchResult(
