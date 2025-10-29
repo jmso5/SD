@@ -55,7 +55,15 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         if palavra not in self.indice_invertido:
             #self.indice_invertido[palavra] = set()
             self.indice_invertido[palavra] = []
-        #self.indice_invertido[palavra].add((url, title, citacao))
+        
+        # Verifica se o URL já existe para esta palavra
+            
+        for registo in self.indice_invertido[palavra]:
+            if registo[0] == url:
+                print(f"[Ignorada] '{palavra}' -> {url} (já existe)")
+                return empty_pb2.Empty()
+
+
         self.indice_invertido[palavra].append(novo_registo)
 
         print(f"[Adicionada] '{palavra}' -> {url} (Revelânica: {links_count})")
@@ -65,7 +73,7 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         termo = request.word.lower()
         resultados = []
 
-        for temo in self.indice_invertido:
+        for termo in self.indice_invertido:
             resultados_ordenados = sorted(
                 self.indice_invertido[termo],
                 key = lambda x: x[3],

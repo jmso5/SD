@@ -60,7 +60,7 @@ class Client:
        """
 
        while True:
-            print("--- Googol ---")
+            print("\n--- Googol ---")
             print("1. Adicionar URL manualmente")
             print("2. Pesquisar palavra(s)")
             print("3. Estatísticas do sistema")

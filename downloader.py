@@ -208,7 +208,7 @@ class Downloader:
                     print("-" * 60)
 
                 if i + 10 < len(resultados):
-                    continuar = input("\nMostrar mais resultados? (Enter para continuar, 'n' para parar): ")
+                    continuar = input("\nMostrar mais resultados? (Enter para continuar, 'n' para parar): \n")
                     if continuar.lower() == 'n':
                         break
 
