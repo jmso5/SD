@@ -7,7 +7,7 @@ import json
 import random
 from concurrent import futures
 
-MAX_MESSAGE_LENGTH = 104857600 #50 * 1024 * 1024 
+MAX_MESSAGE_LENGTH = 262144000
 
 class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServicer):
 

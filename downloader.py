@@ -8,6 +8,9 @@ import index_pb2_grpc
 from google.protobuf import empty_pb2
 import sys
 import json
+import time
+
+MAX_RETRIES = 3
 
 class Downloader:
     def __init__(self, barrel_address, gateway_address):
@@ -92,69 +95,65 @@ class Downloader:
 
 
     
-    def main_loop(self, max_paginas=1000):
-        paginas_processadas = 0
-        while paginas_processadas < max_paginas:
-            #resposta = self.queue_stub.takeNext(empty_pb2.Empty())
-            resposta = self.gateway_stub.takeNext(empty_pb2.Empty())
+    def main_loop(self):
 
-            url = resposta.url
-            
-            if not url:
-                print("[Fila] vazia, a esperar...")
-                break
+        while True:
 
-            if url in self.urls_visitadas:
-                continue
+            try:     
+                resposta = self.gateway_stub.takeNext(empty_pb2.Empty())
+                url = resposta.url
+                
+                if not url:
+                    print("[Fila] vazia, a esperar...")
+                    time.sleep(3)
+                    continue
 
-            html = self.processar_url(url)
-            if not html:
-                continue
+                if url in self.urls_visitadas:
+                    continue
 
-            info = self.extrair_informacao(html, url)
-            print(f"\nTÍTULO -> {info['titulo']}")
-            print(f"URL -> {info['url']}")
-            print(f"NÚMERO DE LINKS ENCONTRADOS -> {len(info['links'])}")
-            print("-" * 60)
+                html = self.processar_url(url)
+                if not html:
+                    continue
 
-            # envia palavras para o Barrel
-            palavras = info["texto"].lower().split()
-            for palavra in palavras:
-                if palavra.isalpha():
-                    sucessos = 0
-                    for stub in self.barrel_stub:
-                        max_retries = 3
-                        for attempt in range (max_retries):
-                            try:
-                                #self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
-                                stub.addToIndex(
-                                    index_pb2.AddToIndexRequest(
-                                        word=palavra,
-                                        url=info["url"],
-                                        title=info["titulo"],
-                                        citacao=info["texto"][:200],  # primeiros 200 carateres da página
-                                        links_count=len(info['links'])
+                info = self.extrair_informacao(html, url)
+                print(f"\nTÍTULO -> {info['titulo']}")
+                print(f"URL -> {info['url']}")
+                print(f"NÚMERO DE LINKS ENCONTRADOS -> {len(info['links'])}")
+                print("-" * 60)
+
+                # envia palavras para o Barrel
+                palavras = info["texto"].lower().split()
+                for palavra in palavras:
+                    if palavra.isalpha():
+                        for stub in self.barrel_stub:
+                            for attempt in range (MAX_RETRIES):
+                                try:
+                                    stub.addToIndex(
+                                        index_pb2.AddToIndexRequest(
+                                            word=palavra,
+                                            url=info["url"],
+                                            title=info["titulo"],
+                                            citacao=info["texto"][:200],  # primeiros 200 carateres da página
+                                            links_count=len(info['links'])
+                                        )
                                     )
-                                )
-                                sucessos += 1
-                                break
-                            except grpc.RpcError as e:
-                                print(f"Erro RPC: {e}")
+                                except grpc.RpcError as e:
+                                    print(f"Erro RPC: {e}")
             
-            # caso todos os barrels falhem
-            if self.barrel_stub and sucessos == 0:
-                print(f"[ATENÇÃO] Falha crítica: A palavra '{palavra}' não foi indexada em NENHUM Barrel.")
 
-            # Adiciona links encontrados à Queue
-            for link in info["links"]:
-                if link not in self.urls_visitadas and self.validador_url(link):
-                    try:
-                        #self.queue_stub.putNew(index_pb2.PutNewRequest(url=link))
-                        self.gateway_stub.putNew(index_pb2.PutNewRequest(url=link))
-                    except grpc.RpcError as e:
-                        print(f"Erro RPC ao adicionar URL à Queue: {e}")
+                # Adiciona links encontrados à Queue
+                for link in info["links"]:
+                    if link not in self.urls_visitadas and self.validador_url(link):
+                        try:
+                            #self.queue_stub.putNew(index_pb2.PutNewRequest(url=link))
+                            self.gateway_stub.putNew(index_pb2.PutNewRequest(url=link))
+                        except grpc.RpcError as e:
+                            print(f"Erro RPC ao adicionar URL à Queue: {e}")
 
-            paginas_processadas += 1
+            except grpc.RpcError as e:
+                print(f"Erro RPC ao obter URL da fila: {e}. A aguardar 10 segundos...")
+                time.sleep(10)
+                continue                
     
     '''
     def main_loop(self):
@@ -258,25 +257,4 @@ if __name__ == "__main__":
     gateway_addr = f"{config['gateway']['ip']}:{config['gateway']['port']}"
 
     d = Downloader(barrel_addrs, gateway_addr)
-    d.main_loop(max_paginas=10)
-
-    '''d = Downloader() 
-    novo_url = input("Deseja introduzir novo url? (Y/N) ") 
-    
-    if novo_url.lower() == "y": 
-        url_introduzido = input("Instroduza URL: ") 
-        d.adicionar_url_inicial(url_introduzido) 
-        d.main_loop(max_paginas=10) 
-
-    elif novo_url.lower() == "n": 
-        print("Usar urls já guardados\n") 
-        
-        d.main_loop(max_paginas=10) 
-        #d.main_loop() 
-
-    while (True): 
-        termo = input("\nPesquisar termo (ou 'sair'): ").strip() 
-        if termo.lower() == "sair": 
-            print("A sair...") 
-            break 
-        d.pesquisar(termo)'''
+    d.main_loop()

@@ -4,7 +4,7 @@ import index_pb2
 from google.protobuf import empty_pb2
 import json
 
-MAX_MESSAGE_LENGTH = 104857600 #50 * 1024 * 1024 
+MAX_MESSAGE_LENGTH = 262144000
 
 class Client:
    
