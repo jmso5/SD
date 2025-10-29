@@ -121,20 +121,29 @@ class Downloader:
             palavras = info["texto"].lower().split()
             for palavra in palavras:
                 if palavra.isalpha():
+                    sucessos = 0
                     for stub in self.barrel_stub:
-                        try:
-                            #self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
-                            stub.addToIndex(
-                                index_pb2.AddToIndexRequest(
-                                    word=palavra,
-                                    url=info["url"],
-                                    title=info["titulo"],
-                                    citacao=info["texto"][:200],  # primeiros 200 carateres da página
-                                    links_count=len(info['links'])
+                        max_retries = 3
+                        for attempt in range (max_retries):
+                            try:
+                                #self.barrel_stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
+                                stub.addToIndex(
+                                    index_pb2.AddToIndexRequest(
+                                        word=palavra,
+                                        url=info["url"],
+                                        title=info["titulo"],
+                                        citacao=info["texto"][:200],  # primeiros 200 carateres da página
+                                        links_count=len(info['links'])
+                                    )
                                 )
-                            )
-                        except grpc.RpcError as e:
-                            print(f"Erro RPC: {e}")
+                                sucessos += 1
+                                break
+                            except grpc.RpcError as e:
+                                print(f"Erro RPC: {e}")
+            
+            # caso todos os barrels falhem
+            if self.barrel_stub and sucessos == 0:
+                print(f"[ATENÇÃO] Falha crítica: A palavra '{palavra}' não foi indexada em NENHUM Barrel.")
 
             # Adiciona links encontrados à Queue
             for link in info["links"]:

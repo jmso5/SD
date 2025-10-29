@@ -7,14 +7,21 @@ import json
 import random
 from concurrent import futures
 
+MAX_MESSAGE_LENGTH = 104857600 #50 * 1024 * 1024 
 
 class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServicer):
 
     def __init__(self, barrel_addresses):
         self.barrel_addresses = barrel_addresses
         self.stubs = []
+
+        options = [
+            ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
+            ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
+        ]
+
         for address in barrel_addresses:
-            stub = index_pb2_grpc.StorageBarrelStub(grpc.insecure_channel(address))
+            stub = index_pb2_grpc.StorageBarrelStub(grpc.insecure_channel(address, options=options))
             self.stubs.append(stub)
 
         self.cache = {} # Cache local para palavras já pesquisadas evitando chamadas repetidas ao Barrel
@@ -46,7 +53,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
                     if response.results:
                         self.cache[request.word] = response.results
                         #return response
-                        return index_pb2.SearchWordResponse(results=results)
+                        return index_pb2.SearchWordResponse(results=response.results)
                 except grpc.RpcError as e:
                     print(f"Erro ao contactar o Barrel: {e}")
             return index_pb2.SearchWordResponse(results=[]) # Retorna resultados vazios se não encontrar nada após as tentativas
@@ -135,7 +142,15 @@ if __name__ == "__main__":
     for addr in config['barrels']:
         barrel_addresses.append(f"{addr['ip']}:{addr['port']}")
 
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=10),
+        options=[
+            ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
+            ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
+        ]
+    )
+
+    #server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     
     gateway = Gateway(barrel_addresses)
     index_pb2_grpc.add_GatewayServicer_to_server(gateway, server) # adiciona serviço Gateway

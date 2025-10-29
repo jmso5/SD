@@ -9,6 +9,8 @@ import os
 import sys 
 import json
 
+MAX_MESSAGE_LENGTH = 104857600 #50 * 1024 * 1024 
+
 class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.GatewayServicer):
     def __init__(self, barrel_id, replica_barrels, ficheiro_fila="urls_queue.pkl"):
         self.barrel_id = barrel_id
@@ -27,8 +29,14 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
 
     def connect_replica_barrels(self, addresses):
         stubs = []
+
+        options = [
+            ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
+            ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
+        ]
+
         for addr in addresses:
-            channel = grpc.insecure_channel(addr)
+            channel = grpc.insecure_channel(addr, options=options)
             stub = index_pb2_grpc.StorageBarrelStub(channel)
             stubs.append(stub)
         return stubs
@@ -128,13 +136,30 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
 
             # --- Lógica de Replicação ---
             # Replicar a adição para as réplicas
-            for stub in self.replica_stubs:
+            '''for stub in self.replica_stubs:
                 try:
                     # Envia o mesmo pedido para a réplica
                     stub.putNew(request) 
                 except grpc.RpcError as e:
-                    print(f"[Replica] Falha ao replicar putNew para réplica: {e}")
+                    print(f"[Replica] Falha ao replicar putNew para réplica: {e}")'''
             
+            sucessos = 0
+            for stub in self.replica_stubs:
+                max_retries = 3 # Tenta 3 vezes contactar esta réplica
+                for attempt in range(max_retries):
+                    try:
+                        # Envia o mesmo pedido para a réplica
+                        stub.putNew(request) 
+                        sucessos += 1
+                        print(f"[Replica] Sucesso em putNew para réplica (tentativa {attempt + 1}).")
+                        break # Sai do loop de retries, sucesso para esta réplica
+                    except grpc.RpcError as e:
+                        print(f"[Replica] Falha ao replicar putNew para réplica (tentativa {attempt + 1}): {e}")
+                        
+            # O Barrel não falha se nenhuma réplica estiver ativa, mas imprime um aviso
+            if sucessos == 0 and self.replica_stubs:
+                print("[ATENÇÃO] NENHUMA réplica Barrel recebeu o putNew.")
+
         return empty_pb2.Empty()
 
     def takeNext(self, request, context):        
@@ -155,8 +180,15 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
 
 # ------------------ SERVIDOR ------------------
 def server(port, barrel_id):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=10),
+        options=[
+            ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
+            ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
+        ]
+    )
 
+    #server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 
     replica_barrels = []
     config = load_config()

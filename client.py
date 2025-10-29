@@ -4,11 +4,17 @@ import index_pb2
 from google.protobuf import empty_pb2
 import json
 
+MAX_MESSAGE_LENGTH = 104857600 #50 * 1024 * 1024 
 
 class Client:
    
     def __init__(self, sever_ip, server_port):
-        self.channel = grpc.insecure_channel(f"{sever_ip}:{server_port}") # cria canal gRPC com o gateway
+        options = [
+            ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
+            ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
+        ]
+
+        self.channel = grpc.insecure_channel(f"{sever_ip}:{server_port}", options=options) # cria canal gRPC com o gateway
         self.stub = index_pb2_grpc.GatewayStub(self.channel) # cria stub (cliente) -> putNew / takeNext
         self.barrel_stub = index_pb2_grpc.StorageBarrelStub(self.channel) # addToIndex / searchWord
 
@@ -29,7 +35,7 @@ class Client:
                 for r in grupo:
                     print(f"\nTÍTULO -> {r.title}")
                     print(f"URL -> {r.url}")
-                    print(f"CITAÇÃO -> {r.citacao[:200]}")  # primeiros 200 chars
+                    print(f"CITAÇÃO -> {r.text[:200]}")  # primeiros 200 chars
                     print("-" * 60)
 
                 if i + 10 < len(results):
