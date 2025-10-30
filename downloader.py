@@ -9,15 +9,20 @@ from google.protobuf import empty_pb2
 import sys
 import json
 import time
+from urllib.parse import urlparse, urlunparse
+from concurrent import futures # Necessário para o servidor gRPC
 
 MAX_RETRIES = 3
+MAX_WORKERS = 10 # Para o ThreadPoolExecutor
 
-class Downloader:
+class Downloader(index_pb2_grpc.DownloaderServicer):
     def __init__(self, barrel_address, gateway_address):
         self.urls_a_visitar = Queue()   # fila de URLs por visitar
         self.urls_visitadas = set()     # fila de URLs já visitados
         self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
-        self.gateway_stub = self.connect_gateway(gateway_address)         # para takeNext e putNew
+        self.gateway_stub = self.connect_gateway(gateway_address) # para takeNext e putNew
+
+        self.backlinks_map = {}  # armazenar backlinks
 
     # alteração para conectar todos os barrels
     def connect_barrel(self, addrs):
@@ -99,18 +104,22 @@ class Downloader:
         Apresenta a lista de URLs que apontam para o URL pedido.
         """
         url = request.url
+        print(f"[Servidor RPC] Pedido de Backlinks para: {url}")
 
         try: 
-            html = self.processar_url(url)
+            '''html = self.processar_url(url)
             info = self.extrair_informacao(html, url)
+            links_list = info["links"]'''
+            url_pesquisa_normalizada = normalize_url(url)
 
-            links_list = info["links"]
+            backlinks_set = self.backlinks_map.get(url_pesquisa_normalizada, set())
+            backlinks_list = list(backlinks_set)
 
-            return index_pb2.BacklinksResponse(backlinks=links_list)
+            return index_pb2.BacklinksResponse(backlinks=backlinks_list)
         except:
             print(f"Erro ao obter backlinks para {url}")
-            return []
-            
+            #return []
+            return index_pb2.BacklinksResponse(backlinks=[])
 
     
     def main_loop(self):
@@ -161,7 +170,16 @@ class Downloader:
                                     )
                                 except grpc.RpcError as e:
                                     print(f"Erro RPC: {e}")
-            
+
+                for link_destino in info["links"]:
+                    link_valido = self.validador_url(link_destino)
+                    if link_valido:
+                        link_normalizado = normalize_url(link_destino)
+                        # Atualiza backlinks_map
+                        if link_normalizado not in self.backlinks_map:
+                            self.backlinks_map[link_normalizado] = set()
+
+                        self.backlinks_map[link_normalizado].add(url)
 
                 # Adiciona links encontrados à Queue
                 for link in info["links"]:
@@ -175,8 +193,27 @@ class Downloader:
             except grpc.RpcError as e:
                 print(f"Erro RPC ao obter URL da fila: {e}. A aguardar 10 segundos...")
                 time.sleep(10)
-                continue                
+                continue     
+            pass           
     
+def normalize_url(url):
+    """
+    Normaliza um URL para apenas o domínio (netloc), ignorando o path, query, etc.
+    """
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.netloc.lower()
+        
+        if hostname.startswith("www."):
+            hostname = hostname[4:]
+        
+        # Mantém apenas o domínio, com esquema HTTPS padronizado
+        # Note que o path será vazio (''), o que faz a chave ser apenas 'https://dominio.com'
+        normalized_url = urlunparse(('https', hostname, '', '', '', '')) 
+        return normalized_url.lower()
+
+    except Exception:
+        return url.lower()
 
 
 def load_config(file_path='config.json'):
@@ -221,4 +258,20 @@ if __name__ == "__main__":
     gateway_addr = f"{config['gateway']['ip']}:{config['gateway']['port']}"
 
     d = Downloader(barrel_addrs, gateway_addr)
-    d.main_loop()
+    #d.main_loop()
+
+    # 5. Inicia o Servidor gRPC e regista a instância Downloader
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=MAX_WORKERS))
+    index_pb2_grpc.add_DownloaderServicer_to_server(d, server) 
+    
+    server.add_insecure_port(f"0.0.0.0:{port}")
+    server.start()
+    print(f"Downloader Server/Crawler {downloader_id} iniciado na porta {port}")
+
+    # 6. Inicia o Main Loop do Crawler (na thread principal)
+    try:
+        d.main_loop() 
+    except KeyboardInterrupt:
+        print("A encerrar o Downloader...")
+    finally:
+        server.stop(0)

@@ -68,7 +68,8 @@ class Client:
 
             print(f"\nBacklinks para '{url}':")
             for backlink in backlinks:
-                print(f"- {backlink.url}")
+                #print(f"- {backlink.url}")
+                print(f"- {backlink}")
 
         except grpc.RpcError as e:
             print(f"Erro ao obter backlinks: {e}")

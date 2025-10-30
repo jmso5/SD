@@ -102,16 +102,17 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
                 stub = random.choice(self.downloader_stubs) # Escolhe um Downloader aleatoriamente
 
                 response = stub.getBacklinks(index_pb2.PutNewRequest(url=url))
-                backlinks = response.backlinks
+                return response
+                '''backlinks = response.backlinks
 
                 if backlinks:
-                    return backlinks
+                    return backlinks'''
 
             except grpc.RpcError as e:
                 print(f"[Gateway] Erro ao contactar Barrel em getBacklinks: {e}")
 
-        return []
-
+        #return []
+        return index_pb2.BacklinksResponse(backlinks=[])
 
 
     def putNew(self, request, context, max_retries=5):
