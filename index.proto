@@ -17,6 +17,12 @@ service Gateway{
     rpc putNew (PutNewRequest) returns (google.protobuf.Empty);
     rpc takeNext (google.protobuf.Empty) returns (TakeNextResponse);
     rpc addToIndex (AddToIndexRequest) returns (google.protobuf.Empty);
+    rpc searchWord (SearchWordRequest) returns (SearchWordResponse);
+    rpc getBacklinks (PutNewRequest) returns (BacklinksResponse);
+}
+
+service Downloader{
+    rpc getBacklinks (PutNewRequest) returns (BacklinksResponse);
 }
 
 // Messages for addToIndex method
@@ -50,4 +56,8 @@ message TakeNextResponse {
 
 message PutNewRequest {
   string url = 1;
+}
+
+message BacklinksResponse {
+    repeated string backlinks = 1;
 }

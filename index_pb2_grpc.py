@@ -257,6 +257,16 @@ class GatewayStub(object):
                 request_serializer=index__pb2.AddToIndexRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
+        self.searchWord = channel.unary_unary(
+                '/search.Gateway/searchWord',
+                request_serializer=index__pb2.SearchWordRequest.SerializeToString,
+                response_deserializer=index__pb2.SearchWordResponse.FromString,
+                _registered_method=True)
+        self.getBacklinks = channel.unary_unary(
+                '/search.Gateway/getBacklinks',
+                request_serializer=index__pb2.PutNewRequest.SerializeToString,
+                response_deserializer=index__pb2.BacklinksResponse.FromString,
+                _registered_method=True)
 
 
 class GatewayServicer(object):
@@ -280,6 +290,18 @@ class GatewayServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def searchWord(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def getBacklinks(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_GatewayServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -297,6 +319,16 @@ def add_GatewayServicer_to_server(servicer, server):
                     servicer.addToIndex,
                     request_deserializer=index__pb2.AddToIndexRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'searchWord': grpc.unary_unary_rpc_method_handler(
+                    servicer.searchWord,
+                    request_deserializer=index__pb2.SearchWordRequest.FromString,
+                    response_serializer=index__pb2.SearchWordResponse.SerializeToString,
+            ),
+            'getBacklinks': grpc.unary_unary_rpc_method_handler(
+                    servicer.getBacklinks,
+                    request_deserializer=index__pb2.PutNewRequest.FromString,
+                    response_serializer=index__pb2.BacklinksResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -380,6 +412,132 @@ class Gateway(object):
             '/search.Gateway/addToIndex',
             index__pb2.AddToIndexRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def searchWord(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.Gateway/searchWord',
+            index__pb2.SearchWordRequest.SerializeToString,
+            index__pb2.SearchWordResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getBacklinks(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.Gateway/getBacklinks',
+            index__pb2.PutNewRequest.SerializeToString,
+            index__pb2.BacklinksResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class DownloaderStub(object):
+    """Missing associated documentation comment in .proto file."""
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.getBacklinks = channel.unary_unary(
+                '/search.Downloader/getBacklinks',
+                request_serializer=index__pb2.PutNewRequest.SerializeToString,
+                response_deserializer=index__pb2.BacklinksResponse.FromString,
+                _registered_method=True)
+
+
+class DownloaderServicer(object):
+    """Missing associated documentation comment in .proto file."""
+
+    def getBacklinks(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_DownloaderServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'getBacklinks': grpc.unary_unary_rpc_method_handler(
+                    servicer.getBacklinks,
+                    request_deserializer=index__pb2.PutNewRequest.FromString,
+                    response_serializer=index__pb2.BacklinksResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'search.Downloader', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('search.Downloader', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class Downloader(object):
+    """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def getBacklinks(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.Downloader/getBacklinks',
+            index__pb2.PutNewRequest.SerializeToString,
+            index__pb2.BacklinksResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -92,7 +92,25 @@ class Downloader:
             links.append(link_absoluto)
 
         return {"url": base_url, "titulo": titulo, "texto": texto, "links": links}
+    
+    def getBacklinks(self, request, context):
+        """
+        Método que obtém os backlinks de um URL.
+        Apresenta a lista de URLs que apontam para o URL pedido.
+        """
+        url = request.url
 
+        try: 
+            html = self.processar_url(url)
+            info = self.extrair_informacao(html, url)
+
+            links_list = info["links"]
+
+            return index_pb2.BacklinksResponse(backlinks=links_list)
+        except:
+            print(f"Erro ao obter backlinks para {url}")
+            return []
+            
 
     
     def main_loop(self):
@@ -128,6 +146,10 @@ class Downloader:
                         for stub in self.barrel_stub:
                             for attempt in range (MAX_RETRIES):
                                 try:
+                                    links = []
+                                    for link in info['links']:
+                                        links.append(link)
+
                                     stub.addToIndex(
                                         index_pb2.AddToIndexRequest(
                                             word=palavra,
@@ -155,65 +177,7 @@ class Downloader:
                 time.sleep(10)
                 continue                
     
-    '''
-    def main_loop(self):
-        while not self.urls_a_visitar.empty():
-            url = self.urls_a_visitar.get()
-            if url in self.urls_visitadas:
-                continue
 
-            html = self.processar_url(url)
-            if not html:
-                continue
-
-            info = self.extrair_informacao(html, url)
-            print(f"\nTÍTULO -> {info['titulo']}")
-            print(f"URL -> {info['url']}")
-            print(f"NÚMERO DE LINKS ENCONTRADOS -> {len(info['links'])}")
-            print("-" * 60)
-
-            # envia palavras para o Barrel
-            palavras = info["texto"].lower().split()
-            for palavra in palavras:
-                if palavra.isalpha():
-                    try:
-                        self.stub.addToIndex(index_pb2.AddToIndexRequest(word=palavra, url=info["url"]))
-                    except grpc.RpcError as e:
-                        print(f"Erro RPC: {e}")
-
-            # adiciona novos links à fila
-            for link in info["links"]:
-                if link not in self.urls_visitadas and self.validador_url(link):
-                    self.urls_a_visitar.put(link)
-    '''
-
-    
-    def pesquisar(self, termo):
-        try:
-            resposta = self.barrel_stub.searchWord(index_pb2.SearchWordRequest(word=termo))
-            resultados = resposta.results
-
-            if not resultados:
-                print(f"\nNenhum resultado para '{termo}'.")
-                return
-
-            for i in range(0, len(resultados), 10):
-                grupo = resultados[i:i+10]
-                print(f"\n--- Página {i//10 + 1} ---")
-                for r in grupo:
-                    # TODO está a pôr url em tudo...
-                    print(f"\nTÍTULO -> {r.title}")
-                    print(f"URL -> {r.url}")
-                    print(f"CITAÇÃO -> {r.citacao[:200]}...")  # primeiros 200 chars
-                    print("-" * 60)
-
-                if i + 10 < len(resultados):
-                    continuar = input("\nMostrar mais resultados? (Enter para continuar, 'n' para parar): \n")
-                    if continuar.lower() == 'n':
-                        break
-
-        except grpc.RpcError as e:
-            print(f"Erro ao pesquisar: {e}")
 
 def load_config(file_path='config.json'):
     """Carrega o ficheiro de configuração."""

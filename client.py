@@ -16,13 +16,13 @@ class Client:
 
         self.channel = grpc.insecure_channel(f"{sever_ip}:{server_port}", options=options) # cria canal gRPC com o gateway
         self.stub = index_pb2_grpc.GatewayStub(self.channel) # cria stub (cliente) -> putNew / takeNext
-        self.barrel_stub = index_pb2_grpc.StorageBarrelStub(self.channel) # addToIndex / searchWord
+       
 
     def search(self):
         text = input("Insira pesquisa: ")
 
         try:
-            response = self.barrel_stub.searchWord(index_pb2.SearchWordRequest(word=text))
+            response = self.stub.searchWord(index_pb2.SearchWordRequest(word=text))
             results = response.results
 
             if not results:
@@ -53,6 +53,26 @@ class Client:
         e o tempo médio de resposta a pesquisas medido pela Gateway descriminado por Barrel (em décimas de segundo).
         """
 
+    def search_backlinks(self, url):
+        """
+        Método que obtém os backlinks de um URL.
+        Apresenta a lista de URLs que apontam para o URL pedido.
+        """
+        try:
+            response = self.stub.getBacklinks(index_pb2.PutNewRequest(url=url))
+            backlinks = response.backlinks
+
+            if not backlinks:
+                print(f"\nNenhum backlink encontrado para '{url}'.")
+                return
+
+            print(f"\nBacklinks para '{url}':")
+            for backlink in backlinks:
+                print(f"- {backlink.url}")
+
+        except grpc.RpcError as e:
+            print(f"Erro ao obter backlinks: {e}")
+
 
     def menu(self):
        """
@@ -63,10 +83,11 @@ class Client:
             print("\n--- Googol ---")
             print("1. Adicionar URL manualmente")
             print("2. Pesquisar palavra(s)")
-            print("3. Estatísticas do sistema")
-            print("4. Sair")
+            print("3. Ver backlinks de um URL")
+            print("4. Estatísticas do sistema")
+            print("5. Sair")
 
-            response = input("Escolha uma das opções (1-4):")
+            response = input("Escolha uma das opções (1-5):")
 
             try:
                 if response == "1":
@@ -81,16 +102,23 @@ class Client:
 
                 elif response == "2":
                     self.search()
+
+                elif response == "3":
+                    url = input("Insire o URL para ver os backlinks: ")
+                    if not url.startswith("http://") and not url.startswith("https://"):
+                        print("URL inválido. Deve começar com 'http://' ou 'https://'.")
+                        continue
+                    self.search_backlinks(url)
                     
                 
-                elif response == "3":
+                elif response == "4":
                     self.statistics()
                 
-                elif response == "4":
+                elif response == "5":
                     print("A sair...")
                     break
                 else:
-                    print("Opção inválida. Por favor, escolha uma opção entre 1 e 4.")
+                    print("Opção inválida. Por favor, escolha uma opção entre 1 e 5.")
 
             except grpc.RpcError as e:
                 print(f"Erro ao processar URL {url}: {e}")

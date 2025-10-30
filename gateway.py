@@ -8,12 +8,14 @@ import random
 from concurrent import futures
 
 MAX_MESSAGE_LENGTH = 262144000
+MAX_RETRIES = 5
 
 class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServicer):
 
-    def __init__(self, barrel_addresses):
+    def __init__(self, barrel_addresses, downloader_addresses):
         self.barrel_addresses = barrel_addresses
         self.stubs = []
+        self.downloader_stubs = []
 
         options = [
             ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
@@ -23,6 +25,10 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         for address in barrel_addresses:
             stub = index_pb2_grpc.StorageBarrelStub(grpc.insecure_channel(address, options=options))
             self.stubs.append(stub)
+
+        for address in downloader_addresses:
+            stub = index_pb2_grpc.DownloaderStub(grpc.insecure_channel(address, options=options))
+            self.downloader_stubs.append(stub)
 
         self.cache = {} # Cache local para palavras já pesquisadas evitando chamadas repetidas ao Barrel
         self.most_common_searches = {} # Dicionário para contar as pesquisas mais comuns, chave: palavra, valor: número de pesquisas
@@ -82,6 +88,29 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
                 attempt += 1
                 continue
         return response
+    
+
+    def getBacklinks(self, request, context):
+        """
+        Método que obtém os backlinks de um URL.
+        Apresenta a lista de URLs que apontam para o URL pedido.
+        """
+        url = request.url
+        
+        for attempt in range(MAX_RETRIES):
+            try:
+                stub = random.choice(self.downloader_stubs) # Escolhe um Downloader aleatoriamente
+
+                response = stub.getBacklinks(index_pb2.PutNewRequest(url=url))
+                backlinks = response.backlinks
+
+                if backlinks:
+                    return backlinks
+
+            except grpc.RpcError as e:
+                print(f"[Gateway] Erro ao contactar Barrel em getBacklinks: {e}")
+
+        return []
 
 
 
@@ -142,6 +171,10 @@ if __name__ == "__main__":
     for addr in config['barrels']:
         barrel_addresses.append(f"{addr['ip']}:{addr['port']}")
 
+
+    for addr in config['downloaders']:
+        downloader_addresses.append(f"{addr['ip']}:{addr['port']}")
+
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10),
         options=[
@@ -152,7 +185,7 @@ if __name__ == "__main__":
 
     #server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     
-    gateway = Gateway(barrel_addresses)
+    gateway = Gateway(barrel_addresses, downloader_addresses)
     index_pb2_grpc.add_GatewayServicer_to_server(gateway, server) # adiciona serviço Gateway
     index_pb2_grpc.add_StorageBarrelServicer_to_server(gateway, server) # adiciona serviço StorageBarrel
 

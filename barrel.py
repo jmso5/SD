@@ -60,7 +60,7 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
             
         for registo in self.indice_invertido[palavra]:
             if registo[0] == url:
-                print(f"[Ignorada] '{palavra}' -> {url} (já existe)")
+                # Já existe, não adiciona duplicado
                 return empty_pb2.Empty()
 
 
@@ -116,23 +116,7 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
             print(f"[Erro] ao guardar fila: {e}")
 
     def putNew(self, request, context):
-        '''url = request.url.strip()
 
-        if url and url not in self.urls_guardados:
-            self.fila.put(url)
-            self.urls_guardados.add(url)
-            print(f"[Adicionado] URL à fila: {url}")
-            self.guardar_fila()
-
-            for stub in self.replica_barrels:
-                try:
-                    stub.putNew(request)
-                    print(f"[Replicado] URL para réplica: {url}")
-                except grpc.RpcError as e:
-                    print(f"[Erro] ao replicar URL para réplica: {e}")
-        else:
-            print(f"[URL] duplicado ou inválido: {url}")
-        return empty_pb2.Empty()'''
 
         url = request.url
 
@@ -143,14 +127,6 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
 
             print(f"[Fila] Adicionado novo URL: {url}. URLs totais: {self.fila.qsize()}")
 
-            # --- Lógica de Replicação ---
-            # Replicar a adição para as réplicas
-            '''for stub in self.replica_stubs:
-                try:
-                    # Envia o mesmo pedido para a réplica
-                    stub.putNew(request) 
-                except grpc.RpcError as e:
-                    print(f"[Replica] Falha ao replicar putNew para réplica: {e}")'''
             
             sucessos = 0
             for stub in self.replica_stubs:
