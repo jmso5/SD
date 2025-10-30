@@ -24,13 +24,25 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
 
         self.backlinks_map = {}  # armazenar backlinks
 
-    # alteração para conectar todos os barrels
     def connect_barrel(self, addrs):
         stubs = []
         for addr in addrs:
-                channel = grpc.insecure_channel(addr) 
-                stubs.append(index_pb2_grpc.StorageBarrelStub(channel))
+            channel = grpc.insecure_channel(addr)
+            stub = index_pb2_grpc.StorageBarrelStub(channel)
+
+            try:
+                # Espera até 1s pela resposta (teste real)
+                grpc.channel_ready_future(channel).result(timeout=1)
+                print(f"[Conexão Barrel] Ativo: {addr}")
+                stubs.append(stub)
+            except grpc.FutureTimeoutError:
+                print(f"[Conexão Barrel] Inativo (ignorado): {addr}")
+                continue
+
+        if not stubs:
+            print("[AVISO] Nenhum Barrel ativo encontrado! Downloader continuará a tentar reconectar.")
         return stubs
+
     
     def connect_gateway(self, addr):
         channel = grpc.insecure_channel(addr)

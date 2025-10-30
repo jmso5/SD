@@ -29,10 +29,16 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             self.response_times[addr] = []
 
         for address in barrel_addresses:
-            stub = index_pb2_grpc.StorageBarrelStub(grpc.insecure_channel(address, options=options))
-            self.stubs.append(stub)
+            channel = grpc.insecure_channel(address, options=options)
+            try:
+                grpc.channel_ready_future(channel).result(timeout=1)
+                stub = index_pb2_grpc.StorageBarrelStub(channel)
+                self.stubs.append(stub)
+                self.barrel_stubs_map[address] = stub
+                print(f"[Gateway] Conectado ao Barrel ativo: {address}")
+            except grpc.FutureTimeoutError:
+                print(f"[Gateway] Barrel inativo ignorado: {address}")
 
-            self.barrel_stubs_map[address] = stub
 
         for address in downloader_addresses:
             stub = index_pb2_grpc.DownloaderStub(grpc.insecure_channel(address, options=options))
@@ -284,4 +290,9 @@ if __name__ == "__main__":
     server.add_insecure_port(f"[::]:{porta}")
     server.start()
     print(f"Gateway iniciado na porta {porta}")
-    server.wait_for_termination()
+    
+    try:
+        server.wait_for_termination()
+    except KeyboardInterrupt:
+        print("A encerrar o Gateway...")
+        server.stop(0)
