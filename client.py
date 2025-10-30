@@ -52,6 +52,33 @@ class Client:
         Apresenta as 10 pesquisas mais comuns, a lista de barrels ativos e os respetivos tamanhos dos indices 
         e o tempo médio de resposta a pesquisas medido pela Gateway descriminado por Barrel (em décimas de segundo).
         """
+        print("\n--- Estatísticas do Sistema ---")
+        try:
+            # Chama o novo método RPC na Gateway
+            response = self.stub.getStatistics(empty_pb2.Empty()) 
+
+            # 1. Top 10 pesquisas
+            print("\nTop 10 Pesquisas Mais Comuns:")
+            if response.top_searches:
+                for i, word in enumerate(response.top_searches):
+                    print(f"   {i+1}. {word}")
+            else:
+                print("   Nenhuma pesquisa registada.")
+
+
+            # 2. Estatísticas dos Barrels (Tamanho e Tempo Médio)
+            print("\n Estatísticas:")
+            if response.barrel_stats:
+                print(f"{'ID do Barrel'} | {'Tamanho do Índice'} | {'Tempo Médio (ds)'}")
+                for stat in response.barrel_stats:
+                    # Se o ID for o endereço, só mostrar a porta para simplificar
+                    display_id = stat.barrel_id.split(':')[-1] if ':' in stat.barrel_id else stat.barrel_id
+                    print(f"{'Porta ' + display_id} | {stat.index_size} | {stat.avg_response_time}")
+            else:
+                print("   Nenhuma estatística de Barrel disponível.")
+
+        except grpc.RpcError as e:
+            print(f"Erro ao obter estatísticas da Gateway: {e.details()}")
 
     def search_backlinks(self, url):
         """

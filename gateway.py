@@ -6,6 +6,7 @@ import queue
 import json
 import random
 from concurrent import futures
+import time
 
 MAX_MESSAGE_LENGTH = 262144000
 MAX_RETRIES = 5
@@ -16,15 +17,22 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         self.barrel_addresses = barrel_addresses
         self.stubs = []
         self.downloader_stubs = []
+        self.barrel_stubs_map = {} # para usar em searchWord e getStatistics
 
         options = [
             ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
             ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
         ]
 
+        self.response_times = {} 
+        for addr in barrel_addresses:
+            self.response_times[addr] = []
+
         for address in barrel_addresses:
             stub = index_pb2_grpc.StorageBarrelStub(grpc.insecure_channel(address, options=options))
             self.stubs.append(stub)
+
+            self.barrel_stubs_map[address] = stub
 
         for address in downloader_addresses:
             stub = index_pb2_grpc.DownloaderStub(grpc.insecure_channel(address, options=options))
@@ -32,7 +40,6 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
 
         self.cache = {} # Cache local para palavras já pesquisadas evitando chamadas repetidas ao Barrel
         self.most_common_searches = {} # Dicionário para contar as pesquisas mais comuns, chave: palavra, valor: número de pesquisas
-
 
     def searchWord(self, request, context, max_tries=5):
         """
@@ -43,7 +50,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             Se não obtiver nenhuma resposta tenta novamente até um máximo de "max_tries".
             Atualiza o cache local com os resultados obtidos.
         """
-        self.most_common_searches[request.word] = self.most_common_searches.get(request.word, 0) + 1
+        '''self.most_common_searches[request.word] = self.most_common_searches.get(request.word, 0) + 1
 
         #Verifica se a palavra já está na cache
         if request.word in self.cache:
@@ -63,8 +70,41 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
                 except grpc.RpcError as e:
                     print(f"Erro ao contactar o Barrel: {e}")
             return index_pb2.SearchWordResponse(results=[]) # Retorna resultados vazios se não encontrar nada após as tentativas
-      
+        '''
+        word = request.word
+        
+        # NOVO: Contagem de pesquisas
+        self.most_common_searches[word] = self.most_common_searches.get(word, 0) + 1
 
+        #Verifica se a palavra já está na cache
+        if request.word in self.cache:
+            results = self.cache[request.word]
+            return index_pb2.SearchWordResponse(results=results)
+
+        else:
+            # Seleção de Barrel
+            barrel_address = random.choice(self.barrel_addresses)
+            stub = self.barrel_stubs_map[barrel_address] # Usar o mapa de stubs
+            
+            # --- MEDIÇÃO DE TEMPO ---
+            start_time = time.time() 
+
+            for attempt in range(max_tries):
+                try:
+                    response = stub.searchWord(request)
+                    end_time = time.time()
+                    
+                    # CÁLCULO E REGISTO DO TEMPO DE RESPOSTA (em décimas de segundo)
+                    response_time_ds = (end_time - start_time) * 10
+                    self.response_times[barrel_address].append(response_time_ds) 
+
+                    if response.results:
+                        self.cache[request.word] = response.results
+                        #return response
+                        return index_pb2.SearchWordResponse(results=response.results)
+                except grpc.RpcError as e:
+                    print(f"Erro ao contactar o Barrel: {e}")
+            return index_pb2.SearchWordResponse(results=[]) # Retorna resultados vazios se não encontrar nada após as tentativas
 
     def searchVariousWords(self, request, context, max_retries=5):
         """
@@ -157,6 +197,55 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
 
         # Se todos os Barrels estiverem indisponíveis ou retornarem fila vazia após as tentativas
         return index_pb2.TakeNextResponse(url="") # Retorna URL vazio
+    
+    def getStatistics(self, request, context):
+        """
+        Método que obtém estatísticas de todos os Barrels.
+        """
+        # 1. Obter as 10 pesquisas mais comuns
+        top_searches_list = sorted(
+            self.most_common_searches.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )[:10] 
+        
+        top_searches_words = [word for word, count in top_searches_list]
+
+        # 2. Obter estatísticas dos Barrels (tamanho e tempo médio)
+        barrel_stats_list = []
+        for address, stub in self.barrel_stubs_map.items():
+            
+            # Tenta obter o tamanho do índice
+            index_size = 0
+            try:
+                # Chama o novo RPC no Barrel
+                size_response = stub.getIndexSize(empty_pb2.Empty()) 
+                index_size = size_response.size
+            except grpc.RpcError as e:
+                print(f"[Gateway Stats] Barrel em {address} indisponível ou erro: {e.details()}")
+            
+            # Calcula o tempo médio de resposta
+            times = self.response_times.get(address, [])
+            avg_time = sum(times) / len(times) if times else 0.0 # em décimas de segundo
+
+            # Obtém o ID do Barrel (assumindo que o ID é mapeado a partir do config.json)
+            # Se usar o config.json para mapear, use o ID. Aqui, usamos o endereço
+            # Pode querer usar o 'config.json' para obter o 'id' real
+            barrel_id = address 
+
+            barrel_stats_list.append(
+                index_pb2.BarrelStatistic(
+                    barrel_id=barrel_id, 
+                    index_size=index_size,
+                    avg_response_time=round(avg_time, 2)
+                )
+            )
+
+        return index_pb2.StatisticsResponse(
+            top_searches=top_searches_words,
+            barrel_stats=barrel_stats_list
+        )
+        
         
 def load_config():
     with open('config.json', 'r') as f:

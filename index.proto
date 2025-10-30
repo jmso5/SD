@@ -11,6 +11,7 @@ service StorageBarrel{
     rpc searchWord (SearchWordRequest) returns (SearchWordResponse);
     rpc putNew (PutNewRequest) returns (google.protobuf.Empty); 
     rpc takeNext (google.protobuf.Empty) returns (TakeNextResponse); 
+    rpc getIndexSize (google.protobuf.Empty) returns (BarrelSizeResponse);
 }
 
 service Gateway{
@@ -19,6 +20,7 @@ service Gateway{
     rpc addToIndex (AddToIndexRequest) returns (google.protobuf.Empty);
     rpc searchWord (SearchWordRequest) returns (SearchWordResponse);
     rpc getBacklinks (PutNewRequest) returns (BacklinksResponse);
+    rpc getStatistics (google.protobuf.Empty) returns (StatisticsResponse);
 }
 
 service Downloader{
@@ -60,4 +62,19 @@ message PutNewRequest {
 
 message BacklinksResponse {
     repeated string backlinks = 1;
+}
+
+message BarrelSizeResponse {
+    int64 size = 1; 
+}
+
+message BarrelStatistic {
+    string barrel_id = 1; 
+    int64 index_size = 2; 
+    double avg_response_time = 3; 
+}
+
+message StatisticsResponse {
+    repeated string top_searches = 1; 
+    repeated BarrelStatistic barrel_stats = 2;
 }

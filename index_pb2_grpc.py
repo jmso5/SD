@@ -57,6 +57,11 @@ class StorageBarrelStub(object):
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
                 response_deserializer=index__pb2.TakeNextResponse.FromString,
                 _registered_method=True)
+        self.getIndexSize = channel.unary_unary(
+                '/search.StorageBarrel/getIndexSize',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=index__pb2.BarrelSizeResponse.FromString,
+                _registered_method=True)
 
 
 class StorageBarrelServicer(object):
@@ -88,6 +93,12 @@ class StorageBarrelServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def getIndexSize(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_StorageBarrelServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -110,6 +121,11 @@ def add_StorageBarrelServicer_to_server(servicer, server):
                     servicer.takeNext,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                     response_serializer=index__pb2.TakeNextResponse.SerializeToString,
+            ),
+            'getIndexSize': grpc.unary_unary_rpc_method_handler(
+                    servicer.getIndexSize,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=index__pb2.BarrelSizeResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -232,6 +248,33 @@ class StorageBarrel(object):
             metadata,
             _registered_method=True)
 
+    @staticmethod
+    def getIndexSize(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.StorageBarrel/getIndexSize',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            index__pb2.BarrelSizeResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
 
 class GatewayStub(object):
     """Missing associated documentation comment in .proto file."""
@@ -266,6 +309,11 @@ class GatewayStub(object):
                 '/search.Gateway/getBacklinks',
                 request_serializer=index__pb2.PutNewRequest.SerializeToString,
                 response_deserializer=index__pb2.BacklinksResponse.FromString,
+                _registered_method=True)
+        self.getStatistics = channel.unary_unary(
+                '/search.Gateway/getStatistics',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=index__pb2.StatisticsResponse.FromString,
                 _registered_method=True)
 
 
@@ -302,6 +350,12 @@ class GatewayServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def getStatistics(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_GatewayServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -329,6 +383,11 @@ def add_GatewayServicer_to_server(servicer, server):
                     servicer.getBacklinks,
                     request_deserializer=index__pb2.PutNewRequest.FromString,
                     response_serializer=index__pb2.BacklinksResponse.SerializeToString,
+            ),
+            'getStatistics': grpc.unary_unary_rpc_method_handler(
+                    servicer.getStatistics,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=index__pb2.StatisticsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -466,6 +525,33 @@ class Gateway(object):
             '/search.Gateway/getBacklinks',
             index__pb2.PutNewRequest.SerializeToString,
             index__pb2.BacklinksResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getStatistics(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.Gateway/getStatistics',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            index__pb2.StatisticsResponse.FromString,
             options,
             channel_credentials,
             insecure,

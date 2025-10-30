@@ -162,6 +162,12 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         except Exception as e:
             print(f"Erro ao retirar URL da fila: {e}")
             return index_pb2.TakeNextResponse(url="")
+        
+    def getIndexSize(self, request, context):
+        """
+        Retorna o tamanho do índice invertido (número de palavras únicas indexadas).
+        """
+        return index_pb2.BarrelSizeResponse(size=len(self.indice_invertido))
 
 # ------------------ SERVIDOR ------------------
 def server(port, barrel_id):
