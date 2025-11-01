@@ -12,41 +12,49 @@ import time
 from urllib.parse import urlparse, urlunparse
 from concurrent import futures # Necessário para o servidor gRPC
 
-MAX_RETRIES = 3
-MAX_WORKERS = 10 # Para o ThreadPoolExecutor
+# constantes globais 
+MAX_RETRIES = 3 # número máximo de tentativas para chamadas RPC
+MAX_WORKERS = 10 # para o ThreadPoolExecutor
 
 class Downloader(index_pb2_grpc.DownloaderServicer):
     def __init__(self, barrel_address, gateway_address):
         self.urls_a_visitar = Queue()   # fila de URLs por visitar
         self.urls_visitadas = set()     # fila de URLs já visitados
         self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
-        self.gateway_stub = self.connect_gateway(gateway_address) # para takeNext e putNew
+        self.gateway_stub = self.connect_gateway(gateway_address) # conexão gRPC com o Gateway
 
-        self.backlinks_map = {}  # armazenar backlinks
+        self.backlinks_map = {}  # dicionário para armazenar backlinks
 
-    def connect_barrel(self, addrs):
+    def connect_barrel(self, addrs): 
+        """
+        Conectar aos Barrels disponíveis.
+        """
+
         stubs = []
         for addr in addrs:
-            channel = grpc.insecure_channel(addr)
-            stub = index_pb2_grpc.StorageBarrelStub(channel)
+            channel = grpc.insecure_channel(addr) # cria canal gRPC
+            stub = index_pb2_grpc.StorageBarrelStub(channel) # stub para enviar mensagens
 
             try:
-                # Espera até 1s pela resposta (teste real)
-                grpc.channel_ready_future(channel).result(timeout=1)
+                grpc.channel_ready_future(channel).result(timeout=1) # tenta conectar com timeout de 1 segundo -> vê se está ativo
                 print(f"[Conexão Barrel] Ativo: {addr}")
                 stubs.append(stub)
-            except grpc.FutureTimeoutError:
+            except grpc.FutureTimeoutError: # se não conseguir conectar dentro do timeout ignora 
                 print(f"[Conexão Barrel] Inativo (ignorado): {addr}")
                 continue
 
         if not stubs:
             print("[AVISO] Nenhum Barrel ativo encontrado! Downloader continuará a tentar reconectar.")
-        return stubs
+        return stubs # devolve lista de stubs ativos
 
     
     def connect_gateway(self, addr):
+        """
+        Conectar ao Gateway.
+        """
+
         channel = grpc.insecure_channel(addr)
-        return index_pb2_grpc.GatewayStub(channel)
+        return index_pb2_grpc.GatewayStub(channel) # stub para comunicar
     
     def adicionar_url_inicial(self, url):
         """
@@ -55,12 +63,14 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
         """
         if url not in self.urls_visitadas:
             print(f"URL adicionado à fila: {url}")
-            self.urls_a_visitar.put(url)
+            self.urls_a_visitar.put(url) # coloca url na fila
         else:
             print(f"URL já visitado: {url}")
     
     def validador_url(self, url):
-        # Filtra URLs inválidos
+        """
+        Valida URL.
+        """
 
         if not url:
             return False
@@ -77,6 +87,10 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
 
 
     def processar_url(self, url):
+        """
+        Faz o download da página.
+        """
+
         try:
             print(f"A descarregar: {url}")
 
@@ -84,10 +98,10 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
             headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
             }
-            resposta = requests.get(url,headers=headers, timeout=5)
+            resposta = requests.get(url,headers=headers, timeout=5) # faz pedido HTTP
 
             if resposta.status_code == 200 and 'text/html' in resposta.headers.get('Content-Type', ''): # resposta.status_code == 200 -> verifica se o pedido foi bem sucedido
-                self.urls_visitadas.add(url)
+                self.urls_visitadas.add(url) # marca URL como visitado
                 return resposta.text
             else:
                 print(f"Ignorado (status {resposta.status_code} ou não HTML): {url}")
@@ -98,13 +112,21 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
             return None
 
     def extrair_informacao(self, html, base_url):
-        soup = BeautifulSoup(html, "html.parser")
+        """
+        Extrai título, texto e links.
+        """
 
-        titulo = soup.title.string if soup.title else "Sem título"
-        texto = soup.get_text(separator=" ", strip=True)
+        soup = BeautifulSoup(html, "html.parser")
+        # extrai título da página
+        if soup.title:
+            titulo = soup.title.string
+        else:
+            titulo = "Sem título"
+
+        texto = soup.get_text(separator=" ", strip=True) # extrai texto da página
         links = []
 
-        for a in soup.find_all("a", href=True):
+        for a in soup.find_all("a", href=True): # encontra todos os <a href="">
             link_absoluto = urljoin(base_url, a["href"])  # converte link relativo para absoluto
             links.append(link_absoluto)
 
@@ -112,25 +134,24 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
     
     def getBacklinks(self, request, context):
         """
-        Método que obtém os backlinks de um URL.
-        Apresenta a lista de URLs que apontam para o URL pedido.
+        Método RPC que responde ao Gateway/Cliente, devolvendo a lista de backlinks 
+        para o URL solicitado, usando a cache local (self.backlinks_map).
         """
-        url = request.url
-        print(f"[Servidor RPC] Pedido de Backlinks para: {url}")
+        url_original = request.url
+        print(f"[Servidor RPC] Pedido de Backlinks para: {url_original}")
 
         try: 
-            '''html = self.processar_url(url)
-            info = self.extrair_informacao(html, url)
-            links_list = info["links"]'''
-            url_pesquisa_normalizada = normalize_url(url)
+            url_pesquisa_normalizada = normalize_url(url_original) # normaliza o URL para pesquisa
 
-            backlinks_set = self.backlinks_map.get(url_pesquisa_normalizada, set())
+            backlinks_set = self.backlinks_map.get(url_pesquisa_normalizada, set()) # procura no dicionário local
             backlinks_list = list(backlinks_set)
 
+            print(f"[Servidor RPC] Encontrados {len(backlinks_list)} backlinks para {url_original}")
             return index_pb2.BacklinksResponse(backlinks=backlinks_list)
-        except:
-            print(f"Erro ao obter backlinks para {url}")
-            #return []
+            
+        except Exception as e:
+            print(f"Erro ao obter backlinks para {url_original}: {e}")
+            # Em caso de erro, retorna uma resposta vazia
             return index_pb2.BacklinksResponse(backlinks=[])
 
     
@@ -139,18 +160,20 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
         while True:
 
             try:     
-                resposta = self.gateway_stub.takeNext(empty_pb2.Empty())
+                resposta = self.gateway_stub.takeNext(empty_pb2.Empty()) # pede ao gateway o próximo URL
                 url = resposta.url
                 
+                # se a fila estiver vazia, espera
                 if not url:
                     print("[Fila] vazia, a esperar...")
                     time.sleep(3)
                     continue
-
+                
+                # evita repetir páginas
                 if url in self.urls_visitadas:
                     continue
 
-                html = self.processar_url(url)
+                html = self.processar_url(url) # faz download da página
                 if not html:
                     continue
 
@@ -163,37 +186,38 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                 # envia palavras para o Barrel
                 palavras = info["texto"].lower().split()
                 for palavra in palavras:
-                    if palavra.isalpha():
-                        for stub in self.barrel_stub:
+                    if palavra.isalpha(): # ignora números e símbolos
+                        for stub in self.barrel_stub: # para cada barrel ativo
                             for attempt in range (MAX_RETRIES):
                                 try:
                                     links = []
                                     for link in info['links']:
                                         links.append(link)
 
+                                    # chama o método remoto no barrel
                                     stub.addToIndex(
                                         index_pb2.AddToIndexRequest(
                                             word=palavra,
                                             url=info["url"],
                                             title=info["titulo"],
-                                            citacao=info["texto"][:200],  # primeiros 200 carateres da página
+                                            citacao=info["texto"][:200],  
                                             links_count=len(info['links'])
                                         )
                                     )
                                 except grpc.RpcError as e:
                                     print(f"Erro RPC: {e}")
-
+                
+                # atualiza dicionário de backlinks
                 for link_destino in info["links"]:
                     link_valido = self.validador_url(link_destino)
                     if link_valido:
                         link_normalizado = normalize_url(link_destino)
-                        # Atualiza backlinks_map
                         if link_normalizado not in self.backlinks_map:
                             self.backlinks_map[link_normalizado] = set()
 
-                        self.backlinks_map[link_normalizado].add(url)
+                        self.backlinks_map[link_normalizado].add(url) # regista origem do link
 
-                # Adiciona links encontrados à Queue
+                # adiciona links à fila do Gateway
                 for link in info["links"]:
                     if link not in self.urls_visitadas and self.validador_url(link):
                         try:
@@ -210,7 +234,7 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
     
 def normalize_url(url):
     """
-    Normaliza um URL para apenas o domínio (netloc), ignorando o path, query, etc.
+    Normaliza um URL para apenas o domínio
     """
     try:
         parsed = urlparse(url)
@@ -229,7 +253,10 @@ def normalize_url(url):
 
 
 def load_config(file_path='config.json'):
-    """Carrega o ficheiro de configuração."""
+    """
+    Carrega o ficheiro de configuração.
+    """
+
     try:
         with open(file_path, 'r') as f:
             return json.load(f)
@@ -270,7 +297,6 @@ if __name__ == "__main__":
     gateway_addr = f"{config['gateway']['ip']}:{config['gateway']['port']}"
 
     d = Downloader(barrel_addrs, gateway_addr)
-    #d.main_loop()
 
     # 5. Inicia o Servidor gRPC e regista a instância Downloader
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=MAX_WORKERS))

@@ -1,37 +1,44 @@
 import grpc
 import index_pb2
 import index_pb2_grpc
-from google.protobuf import empty_pb2
-import queue    
+from google.protobuf import empty_pb2  
 import json
 import random
 from concurrent import futures
 import time
+import sys
 
-MAX_MESSAGE_LENGTH = 262144000
-MAX_RETRIES = 5
+# constantes globais
+MAX_MESSAGE_LENGTH = 262144000 # tamanho máximo de mensagem
+MAX_RETRIES = 5 # número máximo de tentativas 
 
 class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServicer):
 
     def __init__(self, barrel_addresses, downloader_addresses):
+        # guarda endereços de Barrels e Downloaders
         self.barrel_addresses = barrel_addresses
-        self.stubs = []
-        self.downloader_stubs = []
-        self.barrel_stubs_map = {} # para usar em searchWord e getStatistics
+        self.downloader_addresses = downloader_addresses
 
+        self.stubs = [] # lista de stubs (clientes gRPC) para os Barrels
+        self.downloader_stubs = [] # lista de stubs para os Downloaders
+        self.barrel_stubs_map = {} # mapa de endereço -> stub 
+
+        # opções de limites de tamanho de mensagem
         options = [
             ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
             ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
         ]
 
-        self.response_times = {} 
-        for addr in barrel_addresses:
-            self.response_times[addr] = []
+        self.response_times = {} # guarda tempos de resposta por Barrel
 
+        for addr in barrel_addresses:
+            self.response_times[addr] = [] # cada barrel começa com lista vazia
+
+        # conecta aos Barrels ativos
         for address in barrel_addresses:
             channel = grpc.insecure_channel(address, options=options)
             try:
-                grpc.channel_ready_future(channel).result(timeout=1)
+                grpc.channel_ready_future(channel).result(timeout=1) # espera até o canal estar pronto
                 stub = index_pb2_grpc.StorageBarrelStub(channel)
                 self.stubs.append(stub)
                 self.barrel_stubs_map[address] = stub
@@ -39,13 +46,13 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             except grpc.FutureTimeoutError:
                 print(f"[Gateway] Barrel inativo ignorado: {address}")
 
-
+        # conecta aos Downloaders 
         for address in downloader_addresses:
             stub = index_pb2_grpc.DownloaderStub(grpc.insecure_channel(address, options=options))
             self.downloader_stubs.append(stub)
 
-        self.cache = {} # Cache local para palavras já pesquisadas evitando chamadas repetidas ao Barrel
-        self.most_common_searches = {} # Dicionário para contar as pesquisas mais comuns, chave: palavra, valor: número de pesquisas
+        self.cache = {} # cache local de pesquisas (palavra -> resultados)
+        self.most_common_searches = {} # dicionário para contar as pesquisas mais comuns
 
     def searchWord(self, request, context, max_tries=5):
         """
@@ -56,57 +63,34 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             Se não obtiver nenhuma resposta tenta novamente até um máximo de "max_tries".
             Atualiza o cache local com os resultados obtidos.
         """
-        '''self.most_common_searches[request.word] = self.most_common_searches.get(request.word, 0) + 1
-
-        #Verifica se a palavra já está na cache
-        if request.word in self.cache:
-            results = self.cache[request.word]
-            return index_pb2.SearchWordResponse(results=results)
-        
-        # Palavra não está na cache, pesquisa nos Barrels
-        else:
-            for attempt in range(max_tries):
-                stub = random.choice(self.stubs) # Escolhe um Barrel aleatoriamente
-                try:
-                    response = stub.searchWord(request)
-                    if response.results:
-                        self.cache[request.word] = response.results
-                        #return response
-                        return index_pb2.SearchWordResponse(results=response.results)
-                except grpc.RpcError as e:
-                    print(f"Erro ao contactar o Barrel: {e}")
-            return index_pb2.SearchWordResponse(results=[]) # Retorna resultados vazios se não encontrar nada após as tentativas
-        '''
+       
         word = request.word
-        
-        # NOVO: Contagem de pesquisas
-        self.most_common_searches[word] = self.most_common_searches.get(word, 0) + 1
+        self.most_common_searches[word] = self.most_common_searches.get(word, 0) + 1 # contagem da palavra nas estatisticas
 
-        #Verifica se a palavra já está na cache
+        # se a palavra já foi pesquisada -> devolve da cache
         if request.word in self.cache:
             results = self.cache[request.word]
             return index_pb2.SearchWordResponse(results=results)
 
         else:
-            # Seleção de Barrel
+            # seleção de Barrel aleatório e obtém stub
             barrel_address = random.choice(self.barrel_addresses)
             stub = self.barrel_stubs_map[barrel_address] # Usar o mapa de stubs
             
-            # --- MEDIÇÃO DE TEMPO ---
-            start_time = time.time() 
+            start_time = time.time() # ínicio do tempo de resposta
 
             for attempt in range(max_tries):
                 try:
-                    response = stub.searchWord(request)
+                    response = stub.searchWord(request) # chamada RPC ao Barrel
                     end_time = time.time()
                     
-                    # CÁLCULO E REGISTO DO TEMPO DE RESPOSTA (em décimas de segundo)
+                    # calcula tempo em décimas de segundo e guarda
                     response_time_ds = (end_time - start_time) * 10
                     self.response_times[barrel_address].append(response_time_ds) 
 
                     if response.results:
+                        # guarda na cache para chamadas futuras
                         self.cache[request.word] = response.results
-                        #return response
                         return index_pb2.SearchWordResponse(results=response.results)
                 except grpc.RpcError as e:
                     print(f"Erro ao contactar o Barrel: {e}")
@@ -136,29 +120,43 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         return response
     
 
-    def getBacklinks(self, request, context):
+    def getBacklinks(self, request, context, max_retries=5):
         """
-        Método que obtém os backlinks de um URL.
-        Apresenta a lista de URLs que apontam para o URL pedido.
+        Método que obtém os backlinks de um URL, consultando todos os Downloaders e agregando os resultados.
         """
         url = request.url
+        all_backlinks = set()  # conjunto para evitar duplicados
         
-        for attempt in range(MAX_RETRIES):
-            try:
-                stub = random.choice(self.downloader_stubs) # Escolhe um Downloader aleatoriamente
+        if not self.downloader_stubs:
+            print("[Gateway] Nenhum Downloader ativo.")
+            return index_pb2.BacklinksResponse(backlinks=[])
+            
+        # itera sobre cada Downloader ativo
+        for stub_index, stub in enumerate(self.downloader_stubs):
+            
+            # verificação de segurança (caso o número de stubs ativos não corresponda ao número de endereços)
+            if stub_index < len(self.downloader_addresses):
+                address = self.downloader_addresses[stub_index]
+            else:
+                address = f"Downloader Index {stub_index}" 
+            
+            for attempt in range(max_retries):
+                try:
+                    response = stub.getBacklinks(index_pb2.PutNewRequest(url=url)) # envia o pedido para este Downloader
 
-                response = stub.getBacklinks(index_pb2.PutNewRequest(url=url))
-                return response
-                '''backlinks = response.backlinks
+                    if response.backlinks:
+                        all_backlinks.update(response.backlinks) # Adiciona todos os backlinks encontrados
+                    
+                    print(f"[Gateway] Downloader em {address} contribuiu com {len(response.backlinks)} backlinks.")
+                    break # sucesso -> passa para o próximo stub
+                    
+                except grpc.RpcError as e:
+                    print(f"[Gateway] Erro ao contactar Downloader em {address} (tentativa {attempt + 1}): {e}")
+                    if attempt == max_retries - 1:
+                        print(f"[Gateway] Falha permanente ao contactar Downloader em {address}.")
 
-                if backlinks:
-                    return backlinks'''
-
-            except grpc.RpcError as e:
-                print(f"[Gateway] Erro ao contactar Barrel em getBacklinks: {e}")
-
-        #return []
-        return index_pb2.BacklinksResponse(backlinks=[])
+        # retornar todos os resultados agregados
+        return index_pb2.BacklinksResponse(backlinks=list(all_backlinks))
 
 
     def putNew(self, request, context, max_retries=5):
@@ -168,40 +166,39 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         """
 
         for attempt in range(max_retries):
-            stub = random.choice(self.stubs) # Escolhe um Barrel aleatoriamente
+            stub = random.choice(self.stubs) # escolhe um Barrel aleatoriamente
             
             try:
-                # Encaminha o pedido PutNew para o Barrel
+                # encaminha o pedido PutNew para o Barrel
                 response = stub.putNew(request) 
                 print(f"[Gateway] Encaminhado putNew para Barrel: {request.url}")
                 return response 
             except grpc.RpcError as e:
-                # A tentativa falhou, continua para a próxima tentativa ou sai
+                # tentativa falhou -> continua para a próxima tentativa ou sai
                 print(f"[Gateway] Erro ao contactar Barrel em putNew: {e}")
 
-        # Se falhar após todas as tentativas
-        return empty_pb2.Empty()
+        return empty_pb2.Empty() # falha após todas as tentativas
     
     def takeNext(self, request, context, max_retries=5):
         """
         Verifica se tem URLs na fila de URLs a visitar, solicitando a um Barrel aleatório com retry.
         """
+
         for attempt in range(max_retries):
-            # Escolhe um Barrel aleatoriamente
-            stub = random.choice(self.stubs)
+            stub = random.choice(self.stubs) # escolhe um Barrel aleatoriamente
             
             try:
                 response = stub.takeNext(request) 
 
-                # Se o Barrel retornar um URL válido, retorna imediatamente
+                # se o Barrel retornar um URL válido -> retorna imediatamente
                 if response.url:
                     return response
                 
-                # Se o Barrel retornar URL vazio, tenta outro Barrel random
+                # se o Barrel retornar URL vazio -> tenta outro Barrel random
             except grpc.RpcError as e:
                 print(f"[Gateway] Erro ao contactar Barrel em takeNext: {e}")
 
-        # Se todos os Barrels estiverem indisponíveis ou retornarem fila vazia após as tentativas
+        # nenhum Barrel retornou um URL válido
         return index_pb2.TakeNextResponse(url="") # Retorna URL vazio
     
     def getStatistics(self, request, context):
@@ -221,24 +218,22 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         barrel_stats_list = []
         for address, stub in self.barrel_stubs_map.items():
             
-            # Tenta obter o tamanho do índice
+            # tenta obter o tamanho do índice
             index_size = 0
             try:
-                # Chama o novo RPC no Barrel
+                # chama o novo RPC no Barrel
                 size_response = stub.getIndexSize(empty_pb2.Empty()) 
                 index_size = size_response.size
             except grpc.RpcError as e:
                 print(f"[Gateway Stats] Barrel em {address} indisponível ou erro: {e.details()}")
             
-            # Calcula o tempo médio de resposta
+            # calcula o tempo médio de resposta
             times = self.response_times.get(address, [])
             avg_time = sum(times) / len(times) if times else 0.0 # em décimas de segundo
 
-            # Obtém o ID do Barrel (assumindo que o ID é mapeado a partir do config.json)
-            # Se usar o config.json para mapear, use o ID. Aqui, usamos o endereço
-            # Pode querer usar o 'config.json' para obter o 'id' real
-            barrel_id = address 
+            barrel_id = address # obtem o ID do Barrel a partir do endereço
 
+            # cria objeto BarrelStatistic (para enviar ao cliente)
             barrel_stats_list.append(
                 index_pb2.BarrelStatistic(
                     barrel_id=barrel_id, 
@@ -247,30 +242,40 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
                 )
             )
 
+        # devolve todas as estatísticas agregadas
         return index_pb2.StatisticsResponse(
             top_searches=top_searches_words,
             barrel_stats=barrel_stats_list
         )
         
         
-def load_config():
-    with open('config.json', 'r') as f:
-        config = json.load(f)
-    return config
+def load_config(file_path='config.json'):
+    """
+    Carrega o ficheiro de configuração.
+    """
+    
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"ERRO: Ficheiro de configuração '{file_path}' não encontrado.")
+        sys.exit(1)
 
 if __name__ == "__main__":
-
+    # carrega configuração do sistema
     config = load_config()
     barrel_addresses = []
     downloader_addresses = []
 
+    # prepara listas de endereços dos barrels
     for addr in config['barrels']:
         barrel_addresses.append(f"{addr['ip']}:{addr['port']}")
 
-
+    # prepara listas de endereços dos downloaders
     for addr in config['downloaders']:
         downloader_addresses.append(f"{addr['ip']}:{addr['port']}")
 
+    # cria o servidor gRPC com até 10 threads
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10),
         options=[
@@ -279,13 +284,12 @@ if __name__ == "__main__":
         ]
     )
 
-    #server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    
+    # instancia o gateway e regista os serviços no servidor
     gateway = Gateway(barrel_addresses, downloader_addresses)
-    index_pb2_grpc.add_GatewayServicer_to_server(gateway, server) # adiciona serviço Gateway
-    index_pb2_grpc.add_StorageBarrelServicer_to_server(gateway, server) # adiciona serviço StorageBarrel
+    index_pb2_grpc.add_GatewayServicer_to_server(gateway, server) 
+    index_pb2_grpc.add_StorageBarrelServicer_to_server(gateway, server) 
 
-
+    # inicia o servidor na porta configurada
     porta = config['gateway']['port']
     server.add_insecure_port(f"[::]:{porta}")
     server.start()

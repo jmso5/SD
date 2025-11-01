@@ -3,12 +3,14 @@ import index_pb2_grpc
 import index_pb2
 from google.protobuf import empty_pb2
 import json
+import sys
 
-MAX_MESSAGE_LENGTH = 262144000
+MAX_MESSAGE_LENGTH = 262144000 # tamanho máximo de mensagem
 
 class Client:
    
     def __init__(self, sever_ip, server_port):
+        # permite enviar e receber mensagens grandes
         options = [
             ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
             ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
@@ -19,25 +21,32 @@ class Client:
        
 
     def search(self):
+        """
+        Método que pesquisa de palavras.
+        """
+
         text = input("Insira pesquisa: ")
 
         try:
+            # envia pedido de pesquisa ao gateway
             response = self.stub.searchWord(index_pb2.SearchWordRequest(word=text))
-            results = response.results
+            results = response.results # lista de resultados 
 
             if not results:
                 print(f"\nNenhum resultado para '{text}'.")
                 return
 
+            # mostra resultados paginados de 10 em 10
             for i in range(0, len(results), 10):
                 grupo = results[i:i+10]
                 print(f"\n--- Página {i//10 + 1} ---")
                 for r in grupo:
                     print(f"\nTÍTULO -> {r.title}")
                     print(f"URL -> {r.url}")
-                    print(f"CITAÇÃO -> {r.text[:200]}")  # primeiros 200 chars
+                    print(f"CITAÇÃO -> {r.text[:200]}")  
                     print("-" * 60)
 
+                # se houver mais resultados, pergunta se quer continuar
                 if i + 10 < len(results):
                     continuar = input("\nMostrar mais resultados? (Enter para continuar, 'n' para parar): ")
                     if continuar.lower() == 'n':
@@ -52,27 +61,31 @@ class Client:
         Apresenta as 10 pesquisas mais comuns, a lista de barrels ativos e os respetivos tamanhos dos indices 
         e o tempo médio de resposta a pesquisas medido pela Gateway descriminado por Barrel (em décimas de segundo).
         """
+
         print("\n--- Estatísticas do Sistema ---")
         try:
-            # Chama o novo método RPC na Gateway
-            response = self.stub.getStatistics(empty_pb2.Empty()) 
+            response = self.stub.getStatistics(empty_pb2.Empty()) # chama o método RPC getStatistics do gateway
 
-            # 1. Top 10 pesquisas
+            # 1. top 10 pesquisas
             print("\nTop 10 Pesquisas Mais Comuns:")
             if response.top_searches:
                 for i, word in enumerate(response.top_searches):
                     print(f"   {i+1}. {word}")
             else:
-                print("   Nenhuma pesquisa registada.")
+                print("\tNenhuma pesquisa registada.")
 
 
-            # 2. Estatísticas dos Barrels (Tamanho e Tempo Médio)
+            # 2. estatísticas dos Barrels (tamanho do índice + tempo médio de resposta)
             print("\n Estatísticas:")
             if response.barrel_stats:
                 print(f"{'ID do Barrel'} | {'Tamanho do Índice'} | {'Tempo Médio (ds)'}")
                 for stat in response.barrel_stats:
-                    # Se o ID for o endereço, só mostrar a porta para simplificar
-                    display_id = stat.barrel_id.split(':')[-1] if ':' in stat.barrel_id else stat.barrel_id
+                    #  mostra apenas a porta (não o IP completo) para simplificar a visualização
+                    if ':' in stat.barrel_id:
+                        display_id = stat.barrel_id.split(':')[-1]
+                    else:
+                        display_id = stat.barrel_id
+
                     print(f"{'Porta ' + display_id} | {stat.index_size} | {stat.avg_response_time}")
             else:
                 print("   Nenhuma estatística de Barrel disponível.")
@@ -85,9 +98,10 @@ class Client:
         Método que obtém os backlinks de um URL.
         Apresenta a lista de URLs que apontam para o URL pedido.
         """
+
         try:
-            response = self.stub.getBacklinks(index_pb2.PutNewRequest(url=url))
-            backlinks = response.backlinks
+            response = self.stub.getBacklinks(index_pb2.PutNewRequest(url=url)) # chama o método RPC getBacklinks do gateway
+            backlinks = response.backlinks # lista de urls que apontam para o url pedido
 
             if not backlinks:
                 print(f"\nNenhum backlink encontrado para '{url}'.")
@@ -95,7 +109,6 @@ class Client:
 
             print(f"\nBacklinks para '{url}':")
             for backlink in backlinks:
-                #print(f"- {backlink.url}")
                 print(f"- {backlink}")
 
         except grpc.RpcError as e:
@@ -118,27 +131,30 @@ class Client:
             response = input("Escolha uma das opções (1-5):")
 
             try:
+                # Adicionar URL manualmente
                 if response == "1":
                     url = input("Insire o URL: ")
-                    if not url.startswith("http://") and not url.startswith("https://"):
+                    if not url.startswith("http://") and not url.startswith("https://"): # verifica se começa por http:// ou https://
                         print("URL inválido. Deve começar com 'http://' ou 'https://'.")
                         continue
 
-                    # Chama o método remoto para adicionar o URL
+                    # envia o URL para o gateway -> vai para a fila de URLs por visitar
                     request = index_pb2.PutNewRequest(url=url)
                     self.stub.putNew(request)
 
+                # Pesquisar palavras
                 elif response == "2":
                     self.search()
 
+                # Ver backlinks de um URL
                 elif response == "3":
                     url = input("Insire o URL para ver os backlinks: ")
                     if not url.startswith("http://") and not url.startswith("https://"):
                         print("URL inválido. Deve começar com 'http://' ou 'https://'.")
                         continue
                     self.search_backlinks(url)
-                    
-                
+
+                # Estatísticas do sistema
                 elif response == "4":
                     self.statistics()
                 
@@ -151,12 +167,25 @@ class Client:
             except grpc.RpcError as e:
                 print(f"Erro ao processar URL {url}: {e}")
 
-def load_config(file_path):
-    with(open(file_path, 'r')) as f:
-        return json.load(f)
+def load_config(file_path='config.json'):
+    """
+    Carrega o ficheiro de configuração.
+    """
+    
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"ERRO: Ficheiro de configuração '{file_path}' não encontrado.")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    #python client.py
-    config = load_config('config.json')
-    client = Client(config['gateway']['ip'], config['gateway']['port']) #inicia cliente com o ip e porta do gateway (definidos no config.json)
-    client.menu()
+
+    config = load_config('config.json') # carrega IP e porta do Gateway a partir do config.json
+    client = Client(config['gateway']['ip'], config['gateway']['port']) # cria instância do cliente
+
+    # não dar erro em caso de ^C
+    try:
+        client.menu()
+    except KeyboardInterrupt:
+        print("A encerrar o Cliente...")
