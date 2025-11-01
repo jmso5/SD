@@ -4,6 +4,7 @@ import index_pb2
 from google.protobuf import empty_pb2
 import json
 import sys
+import time
 
 MAX_MESSAGE_LENGTH = 262144000 # tamanho máximo de mensagem
 
@@ -53,7 +54,8 @@ class Client:
                         break
 
         except grpc.RpcError as e:
-            print(f"Erro ao pesquisar: {e}")
+            print(f"Erro ao conectar com o Gateway. Tente novamente em 5 segundos.")
+            time.sleep(5)
 
     def statistics(self):
         """
@@ -88,10 +90,11 @@ class Client:
 
                     print(f"{'Porta ' + display_id} | {stat.index_size} | {stat.avg_response_time}")
             else:
-                print("   Nenhuma estatística de Barrel disponível.")
+                print("Nenhuma estatística de Barrel disponível.")
 
         except grpc.RpcError as e:
-            print(f"Erro ao obter estatísticas da Gateway: {e.details()}")
+            print(f"Erro ao conectar com o Gateway. Tente novamente em 5 segundos.")
+            time.sleep(5)
 
     def search_backlinks(self, url):
         """
@@ -112,7 +115,8 @@ class Client:
                 print(f"- {backlink}")
 
         except grpc.RpcError as e:
-            print(f"Erro ao obter backlinks: {e}")
+            print(f"Erro ao conectar com o Gateway. Tente novamente em 5 segundos.")
+            time.spleep(5)
 
 
     def menu(self):
@@ -165,7 +169,8 @@ class Client:
                     print("Opção inválida. Por favor, escolha uma opção entre 1 e 5.")
 
             except grpc.RpcError as e:
-                print(f"Erro ao processar URL {url}: {e}")
+                print(f"Erro ao conectar com o Gateway. Tente novamente em 5 segundos.")
+                time.sleep(5)
 
 def load_config(file_path='config.json'):
     """

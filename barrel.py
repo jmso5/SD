@@ -19,18 +19,37 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         self.replica_stubs = self.connect_replica_barrels(replica_barrels) # conecta às réplicas dos barrels
         print(f"[Iniciado] Barrel com {len(self.replica_stubs)} réplicas conectadas.")
 
+        available_replicas = []
+        available_replicas = self.check_available_replicas() # verifica réplicas disponíveis
+
         # gestão na fila local de URLs
         self.fila = Queue()
         self.urls_guardados = set() # evita urls duplicados
         self.ficheiro_fila = ficheiro_fila
-        self.carregar_fila() # carrega fila do ficheiro, se existir
+
+        if available_replicas == []:
+            print("[ATENÇÃO] Nenhuma réplica de Barrel está disponível no momento.")
+            self.carregar_fila() # carrega fila do ficheiro, se existir
+        else:
+            print(f"[Info] Réplicas disponíveis: {len(available_replicas)}. Sincronizando fila de URLs...")
+            # sincroniza a fila com a primeira réplica disponível
+            replica_stub = available_replicas[0]
+            try:
+                response = replica_stub.getUrlQueue(empty_pb2.Empty())
+                for url in response.urls:
+                    if url not in self.urls_guardados:
+                        self.fila.put(url)
+                        self.urls_guardados.add(url)
+                print(f"[Sincronizado] Fila de URLs sincronizada com réplica. URLs na fila: {self.fila.qsize()}.")
+            except grpc.RpcError as e:
+                print(f"[Erro] ao sincronizar fila com réplica: {e}")
+                self.carregar_fila()
     
 
     def connect_replica_barrels(self, addresses):
         """
         Conecta às réplicas dos barrels e retorna uma lista de stubs.
         """
-
         stubs = []
 
         options = [
@@ -43,6 +62,29 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
             stub = index_pb2_grpc.StorageBarrelStub(channel) # cria stub remoto
             stubs.append(stub)
         return stubs
+    
+    def check_available_replicas(self): 
+        """
+        Verifica quais réplicas estão disponíveis.
+        """
+        available_stubs = []
+        for stub in self.replica_stubs:
+            try:
+                stub.getUrlQueue(empty_pb2.Empty()) # chamada simples para verificar disponibilidade
+                available_stubs.append(stub)
+            except grpc.RpcError:
+                print("[Replica] Réplica indisponível.")
+        self.replica_stubs = available_stubs
+
+        return available_stubs
+    
+    def getUrlQueue(self, request, context):
+        """
+        Retorna a fila de URLs como uma lista.
+        """
+
+        urls = list(self.urls_guardados)
+        return index_pb2.UrlQueueResponse(urls=urls)
 
     def addToIndex(self, request, context):
         """
