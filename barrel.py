@@ -8,11 +8,12 @@ import pickle
 import os
 import sys 
 import json
+import random
 
 MAX_MESSAGE_LENGTH = 104857600 #50 * 1024 * 1024 
 
 class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.GatewayServicer):
-    def __init__(self, barrel_id, replica_barrels, ficheiro_fila="urls_queue.pkl"):
+    def __init__(self, barrel_id, replica_barrels, ficheiro_fila="urls_queue.pkl", ficheiro_indice="inverted_index.pkl", ficheiro_visitados="visited_urls.pkl"):
         self.barrel_id = barrel_id # id do barrel 
         self.indice_invertido = {} # estrutura do índice invertido
 
@@ -26,24 +27,30 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         self.fila = Queue()
         self.urls_guardados = set() # evita urls duplicados
         self.ficheiro_fila = ficheiro_fila
+        self.ficheiro_indice = ficheiro_indice
+        self.ficheiro_visitados = ficheiro_visitados
 
         if available_replicas == []:
             print("[ATENÇÃO] Nenhuma réplica de Barrel está disponível no momento.")
-            self.carregar_fila() # carrega fila do ficheiro, se existir
+            self.carregar_dados() # carrega dados dos ficheiros, se existir
+
         else:
             print(f"[Info] Réplicas disponíveis: {len(available_replicas)}. Sincronizando fila de URLs...")
+        
             # sincroniza a fila com a primeira réplica disponível
-            replica_stub = available_replicas[0]
+            replica_stub = random.choice(available_replicas)
             try:
-                response = replica_stub.getUrlQueue(empty_pb2.Empty())
-                for url in response.urls:
-                    if url not in self.urls_guardados:
-                        self.fila.put(url)
-                        self.urls_guardados.add(url)
+                replica_stub.guardar_dados_replica(empty_pb2.Empty()) # pede à réplica para carregar os dados
+
+                self.carregar_dados()
+
                 print(f"[Sincronizado] Fila de URLs sincronizada com réplica. URLs na fila: {self.fila.qsize()}.")
+                print(f"[Sincronizado] Indice invertido sincronizado com réplica. Entradas no índice: {len(self.indice_invertido)}.")
+                print(f"[Sincronizado] Urls visitadas sincronizadas com réplica. URLs visitadas: {len(self.urls_guardados)}.")
+            
             except grpc.RpcError as e:
                 print(f"[Erro] ao sincronizar fila com réplica: {e}")
-                self.carregar_fila()
+                
     
 
     def connect_replica_barrels(self, addresses):
@@ -70,21 +77,14 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         available_stubs = []
         for stub in self.replica_stubs:
             try:
-                stub.getUrlQueue(empty_pb2.Empty()) # chamada simples para verificar disponibilidade
+                stub.checkHealth(empty_pb2.Empty()) # chamada simples para verificar disponibilidade
                 available_stubs.append(stub)
             except grpc.RpcError:
                 print("[Replica] Réplica indisponível.")
         self.replica_stubs = available_stubs
 
         return available_stubs
-    
-    def getUrlQueue(self, request, context):
-        """
-        Retorna a fila de URLs como uma lista.
-        """
-
-        urls = list(self.urls_guardados)
-        return index_pb2.UrlQueueResponse(urls=urls)
+  
 
     def addToIndex(self, request, context):
         """
@@ -142,34 +142,79 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
 
         print(f"Pesquisa '{termo}' -> {len(resultados)} resultados")
         return index_pb2.SearchWordResponse(results=resultados)
+    
 
-    def carregar_fila(self):
+    def carregar_dados(self):
         """
         Carrega a fila de URLs a partir de um ficheiro.
         """
 
+        if os.path.exists(self.ficheiro_indice): # verifica se o ficheiro existe
+            try:
+                with open(self.ficheiro_indice, "rb") as f:
+                    self.indice_invertido = pickle.load(f) # deserializa o conjunto de URLs
+                print(f"[Indice Invertido carregado] com {len(self.indice_invertido)} URLs.")
+            except Exception as e:
+                print(f"[Erro] ao carregar Indice Invertido: {e}")
+
         if os.path.exists(self.ficheiro_fila): # verifica se o ficheiro existe
             try:
                 with open(self.ficheiro_fila, "rb") as f:
-                    urls = pickle.load(f) # deserializa a lista de URLs
-                    for url in urls:
+                    fila = pickle.load(f) # deserializa o conjunto de URLs
+                    for url in fila:
                         self.fila.put(url)
-                        self.urls_guardados.add(url)
-                print(f"[Fila carregada] com {len(self.urls_guardados)} URLs.")
+
+                print(f"[Fila carregada] com {len(self.fila)} URLs.")
             except Exception as e:
                 print(f"[Erro] ao carregar fila: {e}")
 
-    def guardar_fila(self):
+        if os.path.exists(self.ficheiro_visitados): # verifica se o ficheiro existe
+            try:
+                with open(self.ficheiro_visitados, "rb") as f:
+                    self.urls_guardados = pickle.load(f) # deserializa o conjunto de URLs visitadas
+                print(f"[Urls visitados carregadas] com {len(self.urls_guardados)} URLs.")
+            except Exception as e:
+                print(f"[Erro] ao carregar urls visitados: {e}")
+
+
+    def guardar_dados_replica(self, request, context):
+        """
+        Guarda a fila de URLs num ficheiro (chamado pela réplica).
+        """
+        self.guardar_dados()
+
+        return empty_pb2.Empty()
+
+    def guardar_dados(self):
         """
         Guarda a fila de URLs num ficheiro.
         """
 
         try:
-            with open(self.ficheiro_fila, "wb") as f:
-                pickle.dump(list(self.urls_guardados), f) # guarda urls num ficheiro
-            print(f"[Fila guardada] ({len(self.urls_guardados)} URLs).")
+            with open(self.ficheiro_indice, "wb") as f:
+                pickle.dump(self.indice_invertido, f) # guarda urls num ficheiro
+            print(f"[Indice invertido guardado]")
         except Exception as e:
+            print(f"[Erro] ao guardar indice invertido: {e}")
+
+        try:
+            with open(self.ficheiro_visitados, "wb") as f:
+                pickle.dump(self.urls_guardados, f) # guarda urls num ficheiro
+            print(f"[Urls visitadas guardadas] ({len(self.urls_guardados)} URLs).")
+        except Exception as e:
+            print(f"[Erro] ao guardar urls visitadas: {e}")
+
+        try:
+            with open(self.ficheiro_fila, "wb") as f:
+                pickle.dump(list(self.fila.queue), f) # guarda urls num ficheiro
+            print(f"[Fila guardada] ({self.fila.qsize()} URLs).")
+        except Exception as e: 
             print(f"[Erro] ao guardar fila: {e}")
+
+    
+    def checkHealth(self, request, context):    
+        return empty_pb2.Empty()
+        
 
     def putNew(self, request, context):
         """
@@ -180,8 +225,8 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
 
         if url not in self.urls_guardados:
             self.fila.put(url) # adiciona à fila
-            self.urls_guardados.add(url) # controla duplicados
-            self.guardar_fila() # guarda o estado da fila no ficheiro local
+            
+        
 
             print(f"[Fila] Adicionado novo URL: {url}. URLs totais: {self.fila.qsize()}")
 
@@ -211,14 +256,34 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         
         try:
             url = self.fila.get_nowait() # retira o próximo URL da fila
-            self.guardar_fila() # guarda o estado da fila no ficheiro local
+            self.urls_guardados.add(url) # marca como visitado
+            self.fila.remove(url) # remove da fila
 
             print(f"[Fila] Entregue URL: {url}. Restam {self.fila.qsize()} URLs.")
+            
+            for stub in self.replica_stubs:
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        stub.takeProcessedUrl(empty_pb2.Empty()) # notifica a réplica para retirar o próximo URL
+                        print(f"[Replica] Sucesso em takeNext para réplica (tentativa {attempt + 1}).")
+                        break
+                    except grpc.RpcError as e:
+                        print(f"[Replica] Falha ao replicar takeNext para réplica (tentativa {attempt + 1})")
+
             return index_pb2.TakeNextResponse(url=url)
 
         except Exception as e:
             print(f"Erro ao retirar URL da fila: {e}")
             return index_pb2.TakeNextResponse(url="")
+        
+    def takeProcessedUrl(self, request, context):
+        for url in self.fila:
+            if url == request.url:
+                self.fila.remove(url)
+                self.guardar_fila()
+                print(f"[Fila] URL processado removido: {url}. Restam {self.fila.qsize()} URLs.")
+                break
         
     def getIndexSize(self, request, context):
         """
@@ -255,6 +320,7 @@ def server(port, barrel_id):
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:
+        servico.guardar_dados() # guarda a fila antes de encerrar
         print("A encerrar o Barrel...")
         server.stop(0)
 

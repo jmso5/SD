@@ -12,7 +12,9 @@ service StorageBarrel{
     rpc putNew (PutNewRequest) returns (google.protobuf.Empty); 
     rpc takeNext (google.protobuf.Empty) returns (TakeNextResponse); 
     rpc getIndexSize (google.protobuf.Empty) returns (BarrelSizeResponse);
-    rpc getUrlQueue(google.protobuf.Empty) returns (UrlQueueResponse);
+    rpc takeProcessedUrl(PutNewRequest) returns (google.protobuf.Empty);
+    rpc checkHealth(google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc guardar_dados_replica(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 
 service Gateway{
@@ -78,8 +80,4 @@ message BarrelStatistic {
 message StatisticsResponse {
     repeated string top_searches = 1; 
     repeated BarrelStatistic barrel_stats = 2;
-}
-
-message UrlQueueResponse {
-    repeated string urls = 1;
 }

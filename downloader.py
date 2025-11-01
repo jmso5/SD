@@ -18,7 +18,6 @@ MAX_WORKERS = 10 # para o ThreadPoolExecutor
 
 class Downloader(index_pb2_grpc.DownloaderServicer):
     def __init__(self, barrel_address, gateway_address):
-        self.urls_a_visitar = Queue()   # fila de URLs por visitar
         self.urls_visitadas = set()     # fila de URLs já visitados
         self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
         self.gateway_stub = self.connect_gateway(gateway_address) # conexão gRPC com o Gateway
@@ -34,19 +33,27 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
         for addr in addrs:
             channel = grpc.insecure_channel(addr) # cria canal gRPC
             stub = index_pb2_grpc.StorageBarrelStub(channel) # stub para enviar mensagens
+            stubs.append(stub)
 
+        return stubs # devolve lista de stubs ativos
+    
+
+    def check_barrel_connections(self):  
+        """
+        Verifica periodicamente a conexão com os Barrels.
+        """
+
+        available_barrels = []
+
+        for stub in self.barrel_stub:
             try:
-                grpc.channel_ready_future(channel).result(timeout=1) # tenta conectar com timeout de 1 segundo -> vê se está ativo
-                print(f"[Conexão Barrel] Ativo: {addr}")
-                stubs.append(stub)
-            except grpc.FutureTimeoutError: # se não conseguir conectar dentro do timeout ignora 
-                print(f"[Conexão Barrel] Inativo (ignorado): {addr}")
+                # tenta chamar um método simples para verificar se o barrel está ativo
+                stub.checkHealth(empty_pb2.Empty()) # método simples para testar conexão
+                available_barrels.append(stub) # se conseguir, mantém o stub
+            except grpc.RpcError:
                 continue
 
-        if not stubs:
-            print("[AVISO] Nenhum Barrel ativo encontrado! Downloader continuará a tentar reconectar.")
-        return stubs # devolve lista de stubs ativos
-
+        return available_barrels
     
     def connect_gateway(self, addr):
         """
@@ -56,17 +63,7 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
         channel = grpc.insecure_channel(addr)
         return index_pb2_grpc.GatewayStub(channel) # stub para comunicar
     
-    def adicionar_url_inicial(self, url):
-        """
-        Adiciona o primeiro URL à fila.
-        (isto é o que o user insere manualmente)
-        """
-        if url not in self.urls_visitadas:
-            print(f"URL adicionado à fila: {url}")
-            self.urls_a_visitar.put(url) # coloca url na fila
-        else:
-            print(f"URL já visitado: {url}")
-    
+
     def validador_url(self, url):
         """
         Valida URL.
@@ -162,6 +159,7 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
             try:     
                 resposta = self.gateway_stub.takeNext(empty_pb2.Empty()) # pede ao gateway o próximo URL
                 url = resposta.url
+
                 
                 # se a fila estiver vazia, espera
                 if not url:
@@ -183,11 +181,18 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                 print(f"NÚMERO DE LINKS ENCONTRADOS -> {len(info['links'])}")
                 print("-" * 60)
 
+                available_barrels = self.check_barrel_connections() # verifica conexões com barrels
+
+                if not available_barrels:
+                    print("Nenhum Barrel disponível. A aguardar 3 segundos antes de tentar novamente...")
+                    time.sleep(3)
+                    continue
+
                 # envia palavras para o Barrel
                 palavras = info["texto"].lower().split()
                 for palavra in palavras:
                     if palavra.isalpha(): # ignora números e símbolos
-                        for stub in self.barrel_stub: # para cada barrel ativo
+                        for stub in available_barrels: # para cada barrel ativo
                             for attempt in range (MAX_RETRIES):
                                 try:
                                     links = []
@@ -220,17 +225,21 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                 # adiciona links à fila do Gateway
                 for link in info["links"]:
                     if link not in self.urls_visitadas and self.validador_url(link):
-                        try:
-                            #self.queue_stub.putNew(index_pb2.PutNewRequest(url=link))
-                            self.gateway_stub.putNew(index_pb2.PutNewRequest(url=link))
-                        except grpc.RpcError as e:
-                            print(f"Erro RPC ao adicionar URL à Queue: {e}")
+                        for attempt in range(MAX_RETRIES):
+                            try:
+                                #self.queue_stub.putNew(index_pb2.PutNewRequest(url=link))
+                                self.gateway_stub.putNew(index_pb2.PutNewRequest(url=link))
+                                break  # sucesso, sai do loop de tentativas
+                            except grpc.RpcError as e:
+                                print(f"Erro ao conectar com o Gateway: {e}. A tentar novamente...")
+                                time.sleep(3)  # espera antes de tentar novamente
+
 
             except grpc.RpcError as e:
                 print(f"Erro RPC ao obter URL da fila: {e}. A aguardar 10 segundos...")
                 time.sleep(10)
                 continue     
-            pass           
+                       
     
 def normalize_url(url):
     """
