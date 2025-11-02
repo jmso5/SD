@@ -264,8 +264,6 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         if url not in self.urls_guardados:
             self.fila.put(url) # adiciona à fila
             
-        
-
             print(f"[Fila] Adicionado novo URL: {url}. URLs totais: {self.fila.qsize()}")
 
             available_replicas = self.check_available_replicas()
@@ -301,7 +299,7 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
             print(f"[Fila] Entregue URL: {url}. Restam {self.fila.qsize()} URLs.")
 
             available_replicas = self.check_available_replicas()   
-                         
+
             for stub in available_replicas:
                 max_retries = 3
                 for attempt in range(max_retries):
