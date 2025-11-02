@@ -30,7 +30,6 @@ service Gateway{
 
 service Downloader{
     rpc getBacklinks (PutNewRequest) returns (BacklinksResponse);
-    rpc checkHealth (google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 
 // Messages for addToIndex method

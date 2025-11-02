@@ -492,6 +492,11 @@ class GatewayStub(object):
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
                 response_deserializer=index__pb2.StatisticsResponse.FromString,
                 _registered_method=True)
+        self.checkHealth = channel.unary_unary(
+                '/search.Gateway/checkHealth',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
 
 
 class GatewayServicer(object):
@@ -539,6 +544,12 @@ class GatewayServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def checkHealth(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_GatewayServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -576,6 +587,11 @@ def add_GatewayServicer_to_server(servicer, server):
                     servicer.getStatistics,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                     response_serializer=index__pb2.StatisticsResponse.SerializeToString,
+            ),
+            'checkHealth': grpc.unary_unary_rpc_method_handler(
+                    servicer.checkHealth,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -777,6 +793,33 @@ class Gateway(object):
             metadata,
             _registered_method=True)
 
+    @staticmethod
+    def checkHealth(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.Gateway/checkHealth',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
 
 class DownloaderStub(object):
     """Missing associated documentation comment in .proto file."""
@@ -792,23 +835,12 @@ class DownloaderStub(object):
                 request_serializer=index__pb2.PutNewRequest.SerializeToString,
                 response_deserializer=index__pb2.BacklinksResponse.FromString,
                 _registered_method=True)
-        self.checkHealth = channel.unary_unary(
-                '/search.Downloader/checkHealth',
-                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                _registered_method=True)
 
 
 class DownloaderServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def getBacklinks(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def checkHealth(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -821,11 +853,6 @@ def add_DownloaderServicer_to_server(servicer, server):
                     servicer.getBacklinks,
                     request_deserializer=index__pb2.PutNewRequest.FromString,
                     response_serializer=index__pb2.BacklinksResponse.SerializeToString,
-            ),
-            'checkHealth': grpc.unary_unary_rpc_method_handler(
-                    servicer.checkHealth,
-                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -855,33 +882,6 @@ class Downloader(object):
             '/search.Downloader/getBacklinks',
             index__pb2.PutNewRequest.SerializeToString,
             index__pb2.BacklinksResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def checkHealth(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/search.Downloader/checkHealth',
-            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,

@@ -19,8 +19,11 @@ MAX_WORKERS = 10 # para o ThreadPoolExecutor
 class Downloader(index_pb2_grpc.DownloaderServicer):
     def __init__(self, barrel_address, gateway_address):
         self.urls_visitadas = set()     # fila de URLs já visitados
+
+        self.gateway_address = gateway_address
+
         self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
-        self.gateway_stub = self.connect_gateway(gateway_address) # conexão gRPC com o Gateway
+        self.gateway_stub = self.connect_gateway() # conexão gRPC com o Gateway
 
         self.backlinks_map = {}  # dicionário para armazenar backlinks
 
@@ -56,26 +59,26 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
 
         return available_barrels
     
-    def connect_gateway(self, addr):
+    def connect_gateway(self):
         """
         Conectar ao Gateway.
         """
 
         while True:
             try:
-                channel = grpc.insecure_channel(addr)
+                channel = grpc.insecure_channel(self.gateway_address)
                 stub = index_pb2_grpc.GatewayStub(channel) # stub para comunicar
                 
-                # Força uma chamada de teste (usando getStatistics, com timeout)
+                # Força uma chamada de teste (usando getStatistics)
                 # Isto força o gRPC a tentar estabelecer a conexão TCP/HTTP2.
-                stub.checkHealth(empty_pb2.Empty()) 
+                stub.getStatistics(empty_pb2.Empty()) 
                 
-                print(f"[Gateway] Conexão em {addr} estabelecida com sucesso.")
+                print(f"[Gateway] Conexão em {self.gateway_address} estabelecida com sucesso.")
                 return stub # Retorna o stub ativo
             
             except grpc.RpcError as e:
                 # Se falhar a conexão ou der timeout
-                print(f"[Gateway] Indisponível em {addr} (Erro: {e.code().name}). A tentar novamente em 5 segundos...")
+                print(f"[Gateway] Indisponível em {self.gateway_address} (Erro: {e.code().name}). A tentar novamente em 5 segundos...")
             except Exception as e:
                 # Erro inesperado
                 print(f"[Gateway] Erro desconhecido durante a conexão: {e}. A tentar novamente em 5 segundos...")
