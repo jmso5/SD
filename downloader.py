@@ -1,4 +1,34 @@
-from queue import Queue # fila FIFO para URLs
+"""
+Módulo Downloader
+
+    - Componente responsável por fazer o download das páginas web executando em paralelo, 
+    extraindo o conteúdo e os links através de parsing HTML, e enviando a informação para os Storage Barrels.
+    - Estabelece comunicação gRPC com o Gateway para obter URLs a visitar e enviar novos URLs descobertos.
+
+    Funcionalidades principais:
+        - Download de páginas web.
+        - Extração de título, texto e links.
+        - Envio de dados para os Storage Barrels via gRPC.
+        - Comunicação com o Gateway para gestão da fila de URLs.
+        - Serviço gRPC para responder a pedidos de backlinks do Gateway.
+
+    - Cada Downloader opera num loop contínuo, solicitando URLs à fila de URLs por visitar, esse pedido é feito
+    através do Gateway (putNew) para os Barrels, que é onde está a fila de URLs por visitar.
+    - Os links extraídos são enviados de volta para o Gateway (putNew) para serem adicionados à fila de URLs por visitar.
+    - Após descarregar e processar uma página, o Downloader envia os dados extraídos para os Barrels.
+
+    Failover:
+        - O Downloader verifica periodicamente a disponibilidade dos Barrels.
+        - Em caso de falha na comunicação com um Barrel, o Downloader tenta reconectar-se.
+        - Se nenhum Barrel estiver disponível, o Downloader aguarda antes de tentar novamente.
+        - É implementado um mecanismo de retries para chamadas gRPC falhadas, com um número máximo de tentativas.
+
+    Protocolo de multicast:
+        - Para garantir que todos os Barrels recebem os dados, o Downloader envia as informações extraídas para todos os Barrels disponíveis.
+"""
+
+
+
 from bs4 import BeautifulSoup # Biblioteca para parsear HTML e extrair texto/links
 import requests # Para fazer o download das páginas
 from urllib.parse import urljoin # Para transformar links relativos em absolutos
@@ -17,7 +47,19 @@ MAX_RETRIES = 3 # número máximo de tentativas para chamadas RPC
 MAX_WORKERS = 10 # para o ThreadPoolExecutor
 
 class Downloader(index_pb2_grpc.DownloaderServicer):
+    """
+    - Implementa o serviço Downloader, responsável por extrair informação de páginas web.
+
+    Atributos:
+        - urls_visitadas: Conjunto de URLs já visitados para evitar repetições.
+        - gateway_stub: Stub gRPC para comunicar com o Gateway.
+        - barrel_stub: Lista de stubs gRPC para comunicar com os Storage Barrels.
+    """
+
     def __init__(self, barrel_address, gateway_address):
+        """
+        - Inicializa o Downloader, estabelecendo conexões gRPC com os Barrels e o Gateway.
+        """
         self.urls_visitadas = set()     # fila de URLs já visitados
 
         self.gateway_address = gateway_address
@@ -25,12 +67,12 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
         self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
         self.gateway_stub = self.connect_gateway() # conexão gRPC com o Gateway
 
-        self.backlinks_map = {}  # dicionário para armazenar backlinks
-
 
     def connect_barrel(self, addrs): 
         """
-        Conectar aos Barrels disponíveis.
+        Método connect_barrel:
+            - Estabelece conexões gRPC com os Storage Barrels, criando os canais gRPC e os stubs necessários.
+            - Devolve uma lista de stubs para comunicação com os Barrels.
         """
 
         stubs = []
@@ -44,7 +86,9 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
 
     def check_barrel_connections(self):  
         """
-        Verifica periodicamente a conexão com os Barrels.
+        Método check_barrel_connections:
+            - Verifica a disponibilidade dos Storage Barrels, tentando chamar um método simples (checkHealth) em cada stub.
+            - Devolve uma lista de stubs que estão ativos e disponíveis para comunicação.
         """
 
         available_barrels = []
@@ -61,7 +105,9 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
     
     def connect_gateway(self):
         """
-        Conectar ao Gateway.
+        Método connect_gateway:
+            - Estabelece a conexão gRPC com o Gateway, criando o canal gRPC e o stub necessário.
+            - Devolve o stub para comunicação com o Gateway.
         """
 
         while True:
@@ -88,7 +134,9 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
 
     def validador_url(self, url):
         """
-        Valida URL.
+        Método validador_url:
+            - Verifica se o URL é válido para processamento.
+            - Ignora URLs com esquemas "javascript:", "mailto:", ou âncoras "#", aceitando apenas "http://" e "https://".
         """
 
         if not url:
@@ -107,7 +155,11 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
 
     def processar_url(self, url):
         """
-        Faz o download da página.
+        Método processar_url:
+            - Faz o download do conteúdo HTML de um URL.
+            - É utilizado um User-Agent para evitar bloqueios por alguns servidores.
+            - É utilizada a função requests.get que devolve o conteúdo HTML da página.
+            - Retorna o conteúdo HTML se bem sucedido, ou None em caso de falha.
         """
 
         try:
@@ -132,7 +184,11 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
 
     def extrair_informacao(self, html, base_url):
         """
-        Extrai título, texto e links.
+        Método extrair_informacao:
+            - Extrai título, texto e links de uma página HTML.
+            - Utiliza BeautifulSoup para parsear o HTML.
+            - Converte links relativos em absolutos usando urljoin.
+            - Retorna um dicionário com a informação extraída.
         """
 
         soup = BeautifulSoup(html, "html.parser")
@@ -153,32 +209,43 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
     
     def getBacklinks(self, request, context):
         """
-        Método RPC que responde ao Gateway/Cliente, devolvendo a lista de backlinks 
-        para o URL solicitado, usando a cache local (self.backlinks_map).
+        Método getBacklinks:
+            - Método gRPC para obter a lista de backlinks para um URL solicitado pelo cliente.
+            - Utiliza os métodos internos para processar o URL e extrair os links.
+            - Retorna uma resposta com a lista de backlinks encontrados.
         """
-        url_original = request.url
-        print(f"[Servidor RPC] Pedido de Backlinks para: {url_original}")
 
-        try: 
-            url_pesquisa_normalizada = normalize_url(url_original) # normaliza o URL para pesquisa
+        url = request.url
+        print(f"[Servidor RPC] Pedido de Backlinks para: {url}")
 
-            backlinks_set = self.backlinks_map.get(url_pesquisa_normalizada, set()) # procura no dicionário local
-            backlinks_list = list(backlinks_set)
+        try:
+            html = self.processar_url(url)  # Garante que o URL foi processado
 
-            print(f"[Servidor RPC] Encontrados {len(backlinks_list)} backlinks para {url_original}")
-            return index_pb2.BacklinksResponse(backlinks=backlinks_list)
+            if not html:
+                print(f"[Servidor RPC] Não foi possível processar o URL: {url}")
+                return index_pb2.BacklinksResponse(backlinks=[])
             
+            info = self.extrair_informacao(html, url)
+            backlinks = info["links"]  # Usa os links extraídos como backlinks
+
+            print(f"[Servidor RPC] Encontrados {len(backlinks)} backlinks para {url}")
+            return index_pb2.BacklinksResponse(backlinks=backlinks)
         except Exception as e:
-            print(f"Erro ao obter backlinks para {url_original}: {e}")
-            # Em caso de erro, retorna uma resposta vazia
+            print(f"Erro ao obter backlinks para {url}: {e}")
             return index_pb2.BacklinksResponse(backlinks=[])
 
     
     def main_loop(self):
 
-        while True:
-            
+        """
+        Método main_loop:
+            - Pede continuamente URLs ao Gateway para processar (takeNext).
+            - Se receber um URL, faz o download e extrai a informação.
+            - Envia os dados extraídos para os Storage Barrels.
+            - Adiciona novos links descobertos à fila através do Gateway (putNew).
+        """
 
+        while True:
             try:     
                 resposta = self.gateway_stub.takeNext(empty_pb2.Empty()) # pede ao gateway o próximo URL
                 url = resposta.url
@@ -234,23 +301,13 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                                     )
                                 except grpc.RpcError as e:
                                     print(f"Erro RPC: {e}")
-                
-                # atualiza dicionário de backlinks
-                for link_destino in info["links"]:
-                    link_valido = self.validador_url(link_destino)
-                    if link_valido:
-                        link_normalizado = normalize_url(link_destino)
-                        if link_normalizado not in self.backlinks_map:
-                            self.backlinks_map[link_normalizado] = set()
-
-                        self.backlinks_map[link_normalizado].add(url) # regista origem do link
+                    
 
                 # adiciona links à fila do Gateway
                 for link in info["links"]:
                     if link not in self.urls_visitadas and self.validador_url(link):
                         for attempt in range(MAX_RETRIES):
                             try:
-                                #self.queue_stub.putNew(index_pb2.PutNewRequest(url=link))
                                 self.gateway_stub.putNew(index_pb2.PutNewRequest(url=link))
                                 break  # sucesso, sai do loop de tentativas
                             except grpc.RpcError as e:
@@ -264,30 +321,13 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                 time.sleep(1)
                 continue     
                        
-    
-def normalize_url(url):
-    """
-    Normaliza um URL para apenas o domínio
-    """
-    try:
-        parsed = urlparse(url)
-        hostname = parsed.netloc.lower()
-        
-        if hostname.startswith("www."):
-            hostname = hostname[4:]
-        
-        # Mantém apenas o domínio, com esquema HTTPS padronizado
-        # Note que o path será vazio (''), o que faz a chave ser apenas 'https://dominio.com'
-        normalized_url = urlunparse(('https', hostname, '', '', '', '')) 
-        return normalized_url.lower()
-
-    except Exception:
-        return url.lower()
 
 
 def load_config(file_path='config.json'):
     """
-    Carrega o ficheiro de configuração.
+    Função load_config:
+        - Carrega a configuração do ficheiro JSON especificado.
+        - Devolve o conteúdo do ficheiro como um dicionário Python.
     """
 
     try:
@@ -298,9 +338,14 @@ def load_config(file_path='config.json'):
         sys.exit(1)
 
 if __name__ == "__main__":
+    """
+    Função main:
+        - Ponto de entrada do programa.
+        - Verifica argumentos, carrega configuração, inicia o servidor gRPC e o loop principal do Downloader.
+    """
+
 
     # 1. Verifica e obtém o ID do argumento
-
     if len(sys.argv) < 2:
         print("ERRO: Uso correto é: python downloader.py <ID_DO_DOWNLOADER> (ex: downloader_1)")
         sys.exit(1)

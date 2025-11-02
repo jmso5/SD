@@ -46,7 +46,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
     - Implementa lógica de cache local para pesquisas de palavras únicas, contagem de estatísticas de pesquisas
     e lógica de retry para Barrels e Downloaders.
 
-    - Attributes:
+    - Atributos:
         - barrel_addresses: Lista de endereços dos Barrels.
         - downloader_addresses: Lista de endereços dos Downloaders.
         - barrel_stubs: Lista de stubs gRPC para os Barrels.
@@ -305,8 +305,9 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
 
     def putNew(self, request, context, max_retries=5):
         """
-        Método que recebe um pedido do cliente para adicionar um novo URL à fila de URLs a visitar,
-        encaminhando o pedido para um Barrel aleatório com retry.
+        Método putNew:
+            - Recebe um pedido do cliente para adicionar um novo URL à fila de URLs a visitar.
+            - Encaminha o pedido para um Barrel aleatório, implementando lógica de retry.
         """
 
         available_barrels = self.available_barrels()    
@@ -327,7 +328,10 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
     
     def takeNext(self, request, context, max_retries=5):
         """
-        Verifica se tem URLs na fila de URLs a visitar, solicitando a um Barrel aleatório com retry.
+        Método takeNext:
+            - Recebe um pedido do cliente para obter o próximo URL da fila de URLs a visitar.
+            - Encaminha o pedido para um Barrel aleatório, implementando lógica de retry.
+            - Retorna o URL obtido ou vazio se nenhum Barrel retornar um URL válido.
         """
 
         available_barrels = self.available_barrels()
@@ -356,8 +360,12 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
     
     def getStatistics(self, request, context):
         """
-        Método que obtém estatísticas de todos os Barrels.
+        Método getStatistics:
+            - Recebe um pedido do cliente para obter estatísticas do sistema.
+            - Compila as 10 pesquisas mais comuns e estatísticas de cada Barrel (tamanho do índice e tempo médio de resposta).
+            - Retorna as estatísticas compiladas.
         """
+
         # 1. Obter as 10 pesquisas mais comuns
         top_searches_list = sorted(
             self.most_common_searches.items(),
@@ -412,7 +420,9 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         
 def load_config(file_path='config.json'):
     """
-    Carrega o ficheiro de configuração.
+    Método load_config:
+        - Carrega a configuração do sistema a partir de um ficheiro JSON.
+        - Retorna o conteúdo do ficheiro como um dicionário.
     """
     
     try:
@@ -423,6 +433,15 @@ def load_config(file_path='config.json'):
         sys.exit(1)
 
 if __name__ == "__main__":
+    """
+    Função main:
+        - Carrega a configuração do sistema.
+        - Prepara listas de endereços dos Barrels e Downloaders.
+        - Cria o servidor gRPC e regista os serviços do Gateway.
+        - Inicia o servidor na porta configurada e aguarda por pedidos.
+        - Trata encerramento do servidor, guardando as estatísticas num ficheiro pkl.
+    """
+
     # carrega configuração do sistema
     config = load_config()
     barrel_addresses = []
