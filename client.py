@@ -228,6 +228,9 @@ def load_config(file_path='config.json'):
         sys.exit(1)
 
 if __name__ == "__main__":
+    """
+    - Ponto de entrada do programa. Carrega as configurações do ficheiro config.json, cria uma instância do cliente
+    """
 
     config = load_config('config.json') # carrega IP e porta do Gateway a partir do config.json
     client = Client(config['gateway']['ip'], config['gateway']['port']) # cria instância do cliente
