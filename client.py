@@ -117,7 +117,7 @@ class Client:
         Apresenta a lista de URLs que apontam para o URL pedido.
         """
 
-        
+
         try:
             response = self.stub.getBacklinks(index_pb2.PutNewRequest(url=url)) # chama o método RPC getBacklinks do gateway
             backlinks = response.backlinks # lista de urls que apontam para o url pedido
@@ -132,7 +132,7 @@ class Client:
 
         except grpc.RpcError as e:
             print(f"Não foi possível realizar o seu pedido. Tente novamente em 5 segundos.")
-            time.spleep(5)
+            time.sleep(5)
 
 
     def menu(self):

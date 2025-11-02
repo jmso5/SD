@@ -268,9 +268,11 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
 
             print(f"[Fila] Adicionado novo URL: {url}. URLs totais: {self.fila.qsize()}")
 
+            available_replicas = self.check_available_replicas()
+
             # Replica o putNew para as réplicas dos barrels
             sucessos = 0
-            for stub in self.replica_stubs:
+            for stub in available_replicas:
                 max_retries = 3 # tenta 3 vezes contactar esta réplica
                 for attempt in range(max_retries):
                     try:
@@ -297,8 +299,10 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
             self.urls_guardados.add(url) # marca como visitado
 
             print(f"[Fila] Entregue URL: {url}. Restam {self.fila.qsize()} URLs.")
-            
-            for stub in self.replica_stubs:
+
+            available_replicas = self.check_available_replicas()   
+                         
+            for stub in available_replicas:
                 max_retries = 3
                 for attempt in range(max_retries):
                     try:
