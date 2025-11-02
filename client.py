@@ -27,7 +27,6 @@ class Client:
         """
 
         text = input("Insira pesquisa: ")
-
         words = text.lower().split()
 
         if not words:
