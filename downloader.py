@@ -23,6 +23,7 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
         self.gateway_stub = self.connect_gateway(gateway_address) # conexão gRPC com o Gateway
 
         self.backlinks_map = {}  # dicionário para armazenar backlinks
+        
 
     def connect_barrel(self, addrs): 
         """

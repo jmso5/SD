@@ -108,7 +108,6 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
             if registo[0] == url:
                 return empty_pb2.Empty() 
 
-
         self.indice_invertido[palavra].append(novo_registo) # adiciona ao índice
 
         print(f"[Adicionada] '{palavra}' -> {url} (Revelânica: {links_count})")

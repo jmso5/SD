@@ -75,6 +75,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         """
         Carrega estatísticas de pesquisas anteriores a partir de um ficheiro.
         """
+        
 
         if os.path.exists(self.statistics_file):
             try:

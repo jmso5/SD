@@ -117,6 +117,7 @@ class Client:
         Apresenta a lista de URLs que apontam para o URL pedido.
         """
 
+        
         try:
             response = self.stub.getBacklinks(index_pb2.PutNewRequest(url=url)) # chama o método RPC getBacklinks do gateway
             backlinks = response.backlinks # lista de urls que apontam para o url pedido
