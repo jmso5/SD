@@ -9,6 +9,7 @@ import "google/protobuf/empty.proto";
 service StorageBarrel{
     rpc addToIndex (AddToIndexRequest) returns (google.protobuf.Empty);
     rpc searchWord (SearchWordRequest) returns (SearchWordResponse);
+    rpc searchVariousWords (SearchVariousWordsRequest) returns (SearchWordResponse);
     rpc putNew (PutNewRequest) returns (google.protobuf.Empty); 
     rpc takeNext (google.protobuf.Empty) returns (TakeNextResponse); 
     rpc getIndexSize (google.protobuf.Empty) returns (BarrelSizeResponse);
@@ -22,6 +23,7 @@ service Gateway{
     rpc takeNext (google.protobuf.Empty) returns (TakeNextResponse);
     rpc addToIndex (AddToIndexRequest) returns (google.protobuf.Empty);
     rpc searchWord (SearchWordRequest) returns (SearchWordResponse);
+    rpc searchVariousWords (SearchVariousWordsRequest) returns (SearchWordResponse);
     rpc getBacklinks (PutNewRequest) returns (BacklinksResponse);
     rpc getStatistics (google.protobuf.Empty) returns (StatisticsResponse);
 }
@@ -42,6 +44,10 @@ message AddToIndexRequest{
 // Messages for searchWord method
 message SearchWordRequest {
     string word = 1;
+}
+
+message SearchVariousWordsRequest { 
+    repeated string words = 1;
 }
 
 message SearchResult {

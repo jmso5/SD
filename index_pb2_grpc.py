@@ -47,6 +47,11 @@ class StorageBarrelStub(object):
                 request_serializer=index__pb2.SearchWordRequest.SerializeToString,
                 response_deserializer=index__pb2.SearchWordResponse.FromString,
                 _registered_method=True)
+        self.searchVariousWords = channel.unary_unary(
+                '/search.StorageBarrel/searchVariousWords',
+                request_serializer=index__pb2.SearchVariousWordsRequest.SerializeToString,
+                response_deserializer=index__pb2.SearchWordResponse.FromString,
+                _registered_method=True)
         self.putNew = channel.unary_unary(
                 '/search.StorageBarrel/putNew',
                 request_serializer=index__pb2.PutNewRequest.SerializeToString,
@@ -61,11 +66,6 @@ class StorageBarrelStub(object):
                 '/search.StorageBarrel/getIndexSize',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
                 response_deserializer=index__pb2.BarrelSizeResponse.FromString,
-                _registered_method=True)
-        self.getUrlQueue = channel.unary_unary(
-                '/search.StorageBarrel/getUrlQueue',
-                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.takeProcessedUrl = channel.unary_unary(
                 '/search.StorageBarrel/takeProcessedUrl',
@@ -101,6 +101,12 @@ class StorageBarrelServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def searchVariousWords(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def putNew(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -114,12 +120,6 @@ class StorageBarrelServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def getIndexSize(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def getUrlQueue(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -156,6 +156,11 @@ def add_StorageBarrelServicer_to_server(servicer, server):
                     request_deserializer=index__pb2.SearchWordRequest.FromString,
                     response_serializer=index__pb2.SearchWordResponse.SerializeToString,
             ),
+            'searchVariousWords': grpc.unary_unary_rpc_method_handler(
+                    servicer.searchVariousWords,
+                    request_deserializer=index__pb2.SearchVariousWordsRequest.FromString,
+                    response_serializer=index__pb2.SearchWordResponse.SerializeToString,
+            ),
             'putNew': grpc.unary_unary_rpc_method_handler(
                     servicer.putNew,
                     request_deserializer=index__pb2.PutNewRequest.FromString,
@@ -170,11 +175,6 @@ def add_StorageBarrelServicer_to_server(servicer, server):
                     servicer.getIndexSize,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                     response_serializer=index__pb2.BarrelSizeResponse.SerializeToString,
-            ),
-            'getUrlQueue': grpc.unary_unary_rpc_method_handler(
-                    servicer.getUrlQueue,
-                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'takeProcessedUrl': grpc.unary_unary_rpc_method_handler(
                     servicer.takeProcessedUrl,
@@ -259,6 +259,33 @@ class StorageBarrel(object):
             _registered_method=True)
 
     @staticmethod
+    def searchVariousWords(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.StorageBarrel/searchVariousWords',
+            index__pb2.SearchVariousWordsRequest.SerializeToString,
+            index__pb2.SearchWordResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
     def putNew(request,
             target,
             options=(),
@@ -329,33 +356,6 @@ class StorageBarrel(object):
             '/search.StorageBarrel/getIndexSize',
             google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             index__pb2.BarrelSizeResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def getUrlQueue(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/search.StorageBarrel/getUrlQueue',
-            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
@@ -477,6 +477,11 @@ class GatewayStub(object):
                 request_serializer=index__pb2.SearchWordRequest.SerializeToString,
                 response_deserializer=index__pb2.SearchWordResponse.FromString,
                 _registered_method=True)
+        self.searchVariousWords = channel.unary_unary(
+                '/search.Gateway/searchVariousWords',
+                request_serializer=index__pb2.SearchVariousWordsRequest.SerializeToString,
+                response_deserializer=index__pb2.SearchWordResponse.FromString,
+                _registered_method=True)
         self.getBacklinks = channel.unary_unary(
                 '/search.Gateway/getBacklinks',
                 request_serializer=index__pb2.PutNewRequest.SerializeToString,
@@ -516,6 +521,12 @@ class GatewayServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def searchVariousWords(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def getBacklinks(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -549,6 +560,11 @@ def add_GatewayServicer_to_server(servicer, server):
             'searchWord': grpc.unary_unary_rpc_method_handler(
                     servicer.searchWord,
                     request_deserializer=index__pb2.SearchWordRequest.FromString,
+                    response_serializer=index__pb2.SearchWordResponse.SerializeToString,
+            ),
+            'searchVariousWords': grpc.unary_unary_rpc_method_handler(
+                    servicer.searchVariousWords,
+                    request_deserializer=index__pb2.SearchVariousWordsRequest.FromString,
                     response_serializer=index__pb2.SearchWordResponse.SerializeToString,
             ),
             'getBacklinks': grpc.unary_unary_rpc_method_handler(
@@ -669,6 +685,33 @@ class Gateway(object):
             target,
             '/search.Gateway/searchWord',
             index__pb2.SearchWordRequest.SerializeToString,
+            index__pb2.SearchWordResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def searchVariousWords(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/search.Gateway/searchVariousWords',
+            index__pb2.SearchVariousWordsRequest.SerializeToString,
             index__pb2.SearchWordResponse.FromString,
             options,
             channel_credentials,

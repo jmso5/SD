@@ -9,6 +9,7 @@ import os
 import sys 
 import json
 import random
+import time
 
 MAX_MESSAGE_LENGTH = 104857600 #50 * 1024 * 1024 
 
@@ -144,6 +145,43 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         return index_pb2.SearchWordResponse(results=resultados)
     
 
+    def searchVariousWords(self, request, context):
+
+        word_details = {}
+        for word in request.words:
+            termo = word.lower()
+            if termo in self.indice_invertido:
+                for url, title, citacao, links_count in self.indice_invertido[termo]:
+                    if url not in word_details:
+                        word_details[url] = {
+                            'url': url,
+                            'title': title,
+                            'citacao': citacao,
+                            'links_count': links_count,
+                            'count': 1  # número de palavras encontradas neste URL
+                        }
+                    else:
+                        print(f"Incrementing count for URL: {url}")
+                        word_details[url]['count'] += 1
+    
+        resultados = []
+        for details in word_details.values():
+            # Apenas inclui resultados que contêm todas as palavras pesquisadas
+            if details['count'] == len(request.words): 
+                resultados.append(
+                    index_pb2.SearchResult(
+                        url=details['url'],
+                        title=details['title'],
+                        text=details['citacao'],
+                        links_count=details['links_count']
+                    )
+                )
+        # ordena os resultados pelo número de palavras encontradas e depois por relevância
+        resultados.sort(key=lambda x: (word_details[x.url]['count'], x.links_count), reverse=True)
+
+        print(f"Pesquisa várias palavras '{', '.join(request.words)}' -> {len(resultados)} resultados")
+        return index_pb2.SearchWordResponse(results=resultados)
+
     def carregar_dados(self):
         """
         Carrega a fila de URLs a partir de um ficheiro.
@@ -182,6 +220,7 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         Guarda a fila de URLs num ficheiro (chamado pela réplica).
         """
         self.guardar_dados()
+        time.sleep(1) # espera 1 segundo para garantir que os dados são escritos           VERIFICAR
 
         return empty_pb2.Empty()
 
@@ -257,7 +296,6 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
         try:
             url = self.fila.get_nowait() # retira o próximo URL da fila
             self.urls_guardados.add(url) # marca como visitado
-            self.fila.remove(url) # remove da fila
 
             print(f"[Fila] Entregue URL: {url}. Restam {self.fila.qsize()} URLs.")
             

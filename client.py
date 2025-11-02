@@ -28,10 +28,26 @@ class Client:
 
         text = input("Insira pesquisa: ")
 
+        words = text.lower().split()
+
+        if not words:
+            print("Pesquisa inválida.")
+            return
+        
+        print(f"A pesquisar por {' '.join(words)}...")
+
         try:
-            # envia pedido de pesquisa ao gateway
-            response = self.stub.searchWord(index_pb2.SearchWordRequest(word=text))
-            results = response.results # lista de resultados 
+            # 1. Escolhe o RPC: searchWord (1 palavra) ou searchVariousWords (>1 palavra)
+            if len(words) == 1:
+                # Chama o RPC searchWord para uma palavra
+                request = index_pb2.SearchWordRequest(word=words[0])
+                response = self.stub.searchWord(request)
+            else:
+                # Chama o RPC searchVariousWords para várias palavras
+                request = index_pb2.SearchVariousWordsRequest(words=words)
+                response = self.stub.searchVariousWords(request)
+
+            results = response.results  # lista de resultados da pesquisa
 
             if not results:
                 print(f"\nNenhum resultado para '{text}'.")
@@ -54,7 +70,7 @@ class Client:
                         break
 
         except grpc.RpcError as e:
-            print(f"Erro ao conectar com o Gateway. Tente novamente em 5 segundos.")
+            print(f"Não foi possível realizar o seu pedido. Tente novamente em 5 segundos.")
             time.sleep(5)
 
     def statistics(self):
@@ -93,7 +109,7 @@ class Client:
                 print("Nenhuma estatística de Barrel disponível.")
 
         except grpc.RpcError as e:
-            print(f"Erro ao conectar com o Gateway. Tente novamente em 5 segundos.")
+            print(f"Não foi possível realizar o seu pedido. Tente novamente em 5 segundos.")
             time.sleep(5)
 
     def search_backlinks(self, url):
@@ -115,7 +131,7 @@ class Client:
                 print(f"- {backlink}")
 
         except grpc.RpcError as e:
-            print(f"Erro ao conectar com o Gateway. Tente novamente em 5 segundos.")
+            print(f"Não foi possível realizar o seu pedido. Tente novamente em 5 segundos.")
             time.spleep(5)
 
 
@@ -169,7 +185,7 @@ class Client:
                     print("Opção inválida. Por favor, escolha uma opção entre 1 e 5.")
 
             except grpc.RpcError as e:
-                print(f"Erro ao conectar com o Gateway. Tente novamente em 5 segundos.")
+                print(f"Não foi possível realizar o seu pedido. Tente novamente em 5 segundos.")
                 time.sleep(5)
 
 def load_config(file_path='config.json'):
