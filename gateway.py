@@ -1,3 +1,27 @@
+"""
+    Módulo Gateway: Servidor Central de Comunicação
+
+   - Este módulo implementa a classe Gateway, que atua como servidor (server gRPC) para
+   gerenciar a comunicação com os clientes, Barrels e Downloaders.
+
+   O Gateway é responsável por:
+    1. Receber pedidos de pesquisa de palavras dos clientes e encaminhar esses pedidos para os Barrels disponíveis.
+    2. Cache local de pesquisas para uma só palavra para otimizar o desempenho.
+    3. Balanceamento de carga e lógica de retry para Barrels (Failover).
+    4. Receber pedidos de backlinks dos clientes e encaminhá-los para os Downloaders.
+    5. Gerenciar a fila de URLs a visitar (putNew e takeNext) encaminhando os pedidos para os Barrels.
+    6. Coletar e fornecer estatísticas sobre pesquisas e desempenho dos Barrels.  
+
+    Para estas funcionalidades temos os seguintes métodos:
+        - searchWord: Pesquisa uma única palavra, com cache local e retry.
+        - searchVariousWords: Pesquisa várias palavras, agregando resultados.
+        - getBacklinks: Obtém backlinks de um URL, agregando resultados de vários Downloaders.
+        - putNew: Adiciona um novo URL à fila de URLs a visitar.
+        - takeNext: Obtém o próximo URL da fila de URLs a visitar.
+        - getStatistics: Fornece estatísticas sobre pesquisas e desempenho dos Barrels.
+"""
+
+
 import grpc
 import index_pb2
 import index_pb2_grpc
@@ -15,8 +39,30 @@ MAX_MESSAGE_LENGTH = 262144000 # tamanho máximo de mensagem
 MAX_RETRIES = 5 # número máximo de tentativas 
 
 class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServicer):
+    """
+    - O Gateway mantém a lista dos Barrels e Downloaders ativos, gerencia a comunicação com eles
+    e fornece uma interface de acesso aos Clientes.
+
+    - Implementa lógica de cache local para pesquisas de palavras únicas, contagem de estatísticas de pesquisas
+    e lógica de retry para Barrels e Downloaders.
+
+    - Attributes:
+        - barrel_addresses: Lista de endereços dos Barrels.
+        - downloader_addresses: Lista de endereços dos Downloaders.
+        - barrel_stubs: Lista de stubs gRPC para os Barrels.
+        - barrel_stubs_map: Mapeia endereços para stubs de Barrels.
+        - downloader_stubs: Lista de stubs gRPC para os Downloaders.
+        - cache: Cache local de pesquisas (palavra -> resultados).
+        - most_common_searches: Dicionário para contar as pesquisas mais comuns.
+        - response_times: Guarda tempos de resposta por Barrel.
+        - statistics_file: Ficheiro para guardar estatísticas.
+    """
 
     def __init__(self, barrel_addresses, downloader_addresses, statistics_file='gateway_statistics.pkl'):
+        """
+        - Inicializa o Gateway, criando os canais gRPC e os stubs necessários para se conectar com os Barrels e Downloaders.
+        - Inicia as variáveis de cache, endereços e estatísticas e carrega estatísticas anteriores a partir de um ficheiro.
+        """
 
         # guarda endereços de Barrels e Downloaders
         self.barrel_addresses = barrel_addresses
@@ -59,7 +105,9 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
 
     def available_barrels(self):
         """
-        Método que retorna a lista de Barrels disponíveis.
+        Método available_barrels:
+            - Verifica quais os Barrels disponíveis (ativos) através de chamadas de health check.
+            - Retorna uma lista de stubs dos Barrels disponíveis.
         """
         available_barrels = []        
         for stub in self.barrel_stubs:
@@ -73,9 +121,9 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
     
     def load_statistics(self):
         """
-        Carrega estatísticas de pesquisas anteriores a partir de um ficheiro.
+        Método load_statistics:
+            - Carrega as estatísticas de pesquisas a partir de um ficheiro.
         """
-        
 
         if os.path.exists(self.statistics_file):
             try:
@@ -89,7 +137,8 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
 
     def save_statistics(self):
         """
-        Guarda as estatísticas de pesquisas num ficheiro.
+        Método save_statistics:
+            - Guarda as estatísticas de pesquisas num ficheiro.
         """
 
         try:
@@ -102,11 +151,12 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
     def searchWord(self, request, context, max_tries=5):
         """
         Método searchWord:
-            Recebe um pedido de um cliente para pesquisar uma palavra.
-            Verifica primeiramente se essa palavra já foi pesquisada anteriormente, ou seja, se já se encontra na cache local.
-            Caso não esteja na cache, vai pesquisar a palabra em cada Barrel até obter uma resposta.
-            Se não obtiver nenhuma resposta tenta novamente até um máximo de "max_tries".
-            Atualiza o cache local com os resultados obtidos.
+            - Recebe um pedido de um cliente para pesquisar uma palavra.
+            - Verifica primeiramente se essa palavra já foi pesquisada anteriormente, ou seja, se já se encontra na cache local.
+            - Caso não esteja na cache, vai pesquisar a palabra em cada Barrel até obter uma resposta.
+            - Se não obtiver nenhuma resposta tenta novamente até um máximo de "max_tries".
+            - Calcula o tempo de resposta do barrel e atualiza as respetivas estatísticas.
+            - Atualiza o cache local com os resultados obtidos.
         """
        
         word = request.word
@@ -114,11 +164,12 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
 
         available_barrels = self.available_barrels()
 
+        # Verifica se há Barrels disponíveis
         if not available_barrels:
             print("Nenhum Barrel disponível para pesquisa.")
             return index_pb2.SearchWordResponse(results=[])
 
-        # se a palavra já foi pesquisada -> devolve da cache
+        # Verifica se a palavra já está na cache
         if request.word in self.cache:
             results = self.cache[request.word]
             return index_pb2.SearchWordResponse(results=results)
@@ -127,7 +178,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
 
             # seleção de Barrel aleatório e obtém stub
             stub = random.choice(available_barrels)
-            barrel_address = self.barrel_stubs_map[stub]
+            barrel_address = self.barrel_stubs_map[stub] # obtém endereço do barrel selecionado para as estatísticas
 
             start_time = time.time() # ínicio do tempo de resposta
 
@@ -152,10 +203,11 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
     def searchVariousWords(self, request, context):
         """
         Método searchVariousWords:
-            Recebe um pedido de um cliente para pesquisar várias palavras.
-            Tenta pesquisar as palavras em cada Barrel até obter uma resposta.
-            Se não obtiver nenhuma resposta tenta novamente até um máximo de "max_retries".
-            Retorna os resultados obtidos.
+            - Recebe um pedido de um cliente para pesquisar várias palavras.
+            - Tenta pesquisar as palavras num Barrel "random" um máximo de "MAX_RETIRES" até obter uma resposta.
+            - Calcula o tempo de resposta do barrel e atualiza as respetivas estatísticas.
+            - Agrega os resultados obtidos, removendo duplicados e ordenando pela relevância (links_count).
+            - Retorna os resultados obtidos.
         """
 
         all_results = {} # Usar dicionário para armazenar resultados por URL e evitar duplicados
@@ -165,25 +217,19 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             print("[Gateway] Nenhum Barrel disponível para pesquisa.")
             return index_pb2.SearchWordResponse(results=[])
         
-        
-        for word in request.words: # Itera sobre todas as palavras
+        # atualiza estatísticas de pesquisas
+        for word in request.words: 
             self.most_common_searches[word] = self.most_common_searches.get(word, 0) + 1
-            
-            # Reutiliza a lógica de pesquisa por palavra, mas sem o cache
-            # (poderia ser refatorado para evitar duplicação de código com searchWord)
-            
-            # Seleção de Barrel aleatório e obtém stub
 
-        
-
-        stub = random.choice(available_barrels)
-        barrel_address = self.barrel_stubs_map[stub]
 
 
         start_time = time.time() # ínicio do tempo de resposta
 
         for attempt in range(MAX_RETRIES):
             try:
+                stub = random.choice(available_barrels)
+                barrel_address = self.barrel_stubs_map[stub]
+
                 request_barrel = index_pb2.SearchVariousWordsRequest(words=request.words)
                 response = stub.searchVariousWords(request_barrel) # Chama o searchWord no Barrel
                 end_time = time.time()
@@ -207,7 +253,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         # Converte os resultados do dicionário de volta para uma lista de SearchResult
         final_results_list = list(all_results.values())
         
-        # Opcional: ordenar os resultados agregados pela relevância (links_count)
+        # Ordenar os resultados agregados pela relevância (links_count)
         final_results_list.sort(key=lambda x: x.links_count, reverse=True)
         
         print(f"[Gateway] Pesquisa em várias palavras resultou em {len(final_results_list)} resultados únicos.")
@@ -216,7 +262,11 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
 
     def getBacklinks(self, request, context, max_retries=5):
         """
-        Método que obtém os backlinks de um URL, consultando todos os Downloaders e agregando os resultados.
+        Método getBacklinks:
+            - Recebe um pedido do cliente para obter backlinks de um URL.
+            - Encaminha o pedido para todos os Downloaders ativos, agregando os resultados.
+            - Implementa lógica de retry para cada Downloader.
+            - Retorna todos os backlinks encontrados.
         """
         url = request.url
         all_backlinks = set()  # conjunto para evitar duplicados
@@ -232,7 +282,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             if stub_index < len(self.downloader_addresses):
                 address = self.downloader_addresses[stub_index]
             else:
-                address = f"Downloader Index {stub_index}" 
+                address = print(f"Downloader Index {stub_index}")
             
             for attempt in range(max_retries):
                 try:

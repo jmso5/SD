@@ -1,3 +1,13 @@
+"""
+    - Ficheiro client.py que será usado para o cliente poder comunicar com o sistema
+
+    - O cliente comunica com o gateway através de gRPC para realizar s submissão de URLs manualmente, pesquisas de palavras,
+    obtenção de backlinks e visualização de estatísticas do sistema. Dentra das estatísticas, serão apresentadas as 10 pesquisas mais comuns,
+    a lista de barrels ativos e os respetivos tamanhos dos indices e o tempo médio de resposta a pesquisas nos Barrels medido pela Gateway (em décimas de segundo).
+
+    - As configurações do cliente, como o IP e a porta do Gateway, são carregadas a partir de um ficheiro config.json.
+"""
+
 import grpc
 import index_pb2_grpc
 import index_pb2
@@ -9,8 +19,19 @@ import time
 MAX_MESSAGE_LENGTH = 262144000 # tamanho máximo de mensagem
 
 class Client:
+    """
+    -  Classe Client que representa a comunicação de um cliente com a Gateway que vai realizar os "requests" do cliente através do gRCP. Estes 
+    requests vão ser posteriormente tratados pela Gateway e enviados para o resto do sistema. Recebe o IP e a porta do Gateway para estabelecer a comunicação.
+    """
    
     def __init__(self, sever_ip, server_port):
+        """
+        - Inicia o cliente criando um canal gRPC e um stub para se conectar com o Gateway que é utilizada como servidor.
+
+        - É definido um tamanho máximo para as mensagens enviadas e recebidas para permitir a transmissão de grandes quantidades de dados. 
+        Evitando erros relacionados com o tamanho das mensagens.
+        """
+
         # permite enviar e receber mensagens grandes
         options = [
             ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
@@ -23,7 +44,14 @@ class Client:
 
     def search(self):
         """
-        Método que pesquisa de palavras.
+        - Método que realiza a pesquisa de palavra(s) no sistema. É verificado se a pesquisa é de 1 ou mais palavras, sendo 
+        chamada a função RPC adequada (searchWord ou searchVariousWords).
+
+        - Os resultados são apresentados de forma paginada, 10 resultados por página, e o utilizador pode optar por ver mais resultados
+        ou parar a visualização.
+
+        - Em caso de erro na comunicação com o servidor, é apresentada uma mensagem de erro
+        e o cliente espera 5 segundos antes de tentar novamente.
         """
 
         text = input("Insira pesquisa: ")
@@ -74,8 +102,8 @@ class Client:
 
     def statistics(self):
         """
-        Método que obtém as estatísticas do sistema.
-        Apresenta as 10 pesquisas mais comuns, a lista de barrels ativos e os respetivos tamanhos dos indices 
+        - Método que obtém as estatísticas do sistema.
+        - Apresenta as 10 pesquisas mais comuns, a lista de barrels ativos e os respetivos tamanhos dos indices 
         e o tempo médio de resposta a pesquisas medido pela Gateway descriminado por Barrel (em décimas de segundo).
         """
 
@@ -113,10 +141,9 @@ class Client:
 
     def search_backlinks(self, url):
         """
-        Método que obtém os backlinks de um URL.
-        Apresenta a lista de URLs que apontam para o URL pedido.
+        - Método que obtém os backlinks de um URL.
+        - Apresenta a lista de URLs que apontam para o URL pedido.
         """
-
 
         try:
             response = self.stub.getBacklinks(index_pb2.PutNewRequest(url=url)) # chama o método RPC getBacklinks do gateway
@@ -137,7 +164,7 @@ class Client:
 
     def menu(self):
        """
-       Menu principal do cliente. Este vai apresentar todas as opções disponíveis ao cliente.
+       - Menu principal do cliente que apresenta as opções disponíveis para o utilizador.
        """
 
        while True:
@@ -190,7 +217,7 @@ class Client:
 
 def load_config(file_path='config.json'):
     """
-    Carrega o ficheiro de configuração.
+    - Função para carregar as configurações dos ips e portas para o gateway a partir de um ficheiro JSON.
     """
     
     try:

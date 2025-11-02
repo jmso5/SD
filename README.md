@@ -47,4 +47,10 @@ Este projeto é composto por três componentes principais:
 3. **Mecanismos chave**:
     - Tolerância a falhas/distribuição: o gateway usa a seleção aleatória para distribuir a carga das operações de fila pelos barrels ativos
     - Replicação: o barrel replica as chamadas putNew para as réplicas, garantindo que a fila de URLs persista em múltiplos nós
-    - Caching: o gateway implementa uma cache local para os resultados de pesquisa, otimizando o tempo de resposta para pesquisas repetidas 
+    - Caching: o gateway implementa uma cache local para os resultados de pesquisa, otimizando o tempo de resposta para pesquisas repetidas
+
+## Testes executados:
+1. **Dois computadores**:
+    - Foram inicalizados um Barrel, um Downloader e um Cliente num dos computadores e um Barrel, um Downloader e a Gateway no outro.
+2. **Executar com um só Barrel ou Downloader**
+    - Foram incializados apenas um Barrel e um Downloader para verificar se o sistema funcionaria sem serem inicializados todos os ficheiros presentes no config file. Foram a meio inicializados os ficheiros restantes e desligados novamente.
