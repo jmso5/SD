@@ -5,10 +5,14 @@ from google.protobuf import empty_pb2
 import json
 import sys
 import time
+import logging
 
 MAX_MESSAGE_LENGTH = 262144000 # tamanho máximo de mensagem
 
 class Client:
+
+    grpc_logger = logging.getLogger('grpc')
+    grpc_logger.setLevel(logging.CRITICAL)
    
     def __init__(self, sever_ip, server_port):
         # permite enviar e receber mensagens grandes

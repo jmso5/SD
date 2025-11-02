@@ -23,7 +23,7 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
         self.gateway_stub = self.connect_gateway(gateway_address) # conexão gRPC com o Gateway
 
         self.backlinks_map = {}  # dicionário para armazenar backlinks
-        
+
 
     def connect_barrel(self, addrs): 
         """
@@ -61,8 +61,26 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
         Conectar ao Gateway.
         """
 
-        channel = grpc.insecure_channel(addr)
-        return index_pb2_grpc.GatewayStub(channel) # stub para comunicar
+        while True:
+            try:
+                channel = grpc.insecure_channel(addr)
+                stub = index_pb2_grpc.GatewayStub(channel) # stub para comunicar
+                
+                # Força uma chamada de teste (usando getStatistics, com timeout)
+                # Isto força o gRPC a tentar estabelecer a conexão TCP/HTTP2.
+                stub.checkHealth(empty_pb2.Empty()) 
+                
+                print(f"[Gateway] Conexão em {addr} estabelecida com sucesso.")
+                return stub # Retorna o stub ativo
+            
+            except grpc.RpcError as e:
+                # Se falhar a conexão ou der timeout
+                print(f"[Gateway] Indisponível em {addr} (Erro: {e.code().name}). A tentar novamente em 5 segundos...")
+            except Exception as e:
+                # Erro inesperado
+                print(f"[Gateway] Erro desconhecido durante a conexão: {e}. A tentar novamente em 5 segundos...")
+                
+            time.sleep(5) # Espera antes de tentar novamente
     
 
     def validador_url(self, url):
@@ -156,6 +174,7 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
     def main_loop(self):
 
         while True:
+            
 
             try:     
                 resposta = self.gateway_stub.takeNext(empty_pb2.Empty()) # pede ao gateway o próximo URL
@@ -237,8 +256,9 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
 
 
             except grpc.RpcError as e:
-                print(f"Erro RPC ao obter URL da fila: {e}. A aguardar 10 segundos...")
-                time.sleep(10)
+                print(f"Erro RPC ao obter URL da fila: {e}.")
+                self.connect_gateway()
+                time.sleep(1)
                 continue     
                        
     

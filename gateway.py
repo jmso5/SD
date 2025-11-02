@@ -358,6 +358,9 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             top_searches=top_searches_words,
             barrel_stats=barrel_stats_list
         )
+    
+    def checkHealth(self, request, context):
+        return empty_pb2.Empty()
         
         
 def load_config(file_path='config.json'):
