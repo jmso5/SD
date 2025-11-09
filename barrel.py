@@ -284,7 +284,7 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
                     for url in fila:
                         self.fila.put(url)
 
-                print(f"[Fila carregada] com {len(self.fila)} URLs.")
+                print(f"[Fila carregada] com {self.fila.qsize()} URLs.")
             except Exception as e:
                 print(f"[Erro] ao carregar fila: {e}")
 

@@ -300,7 +300,7 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                                         )
                                     )
                                 except grpc.RpcError as e:
-                                    print(f"Erro RPC: {e}")
+                                    print(f"Erro RPC ao enviar palavra '{palavra}' para o Barrel. A tentar novamente...")
                     
 
                 # adiciona links à fila do Gateway
