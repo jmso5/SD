@@ -1,29 +1,29 @@
 {
     "gateway":{
-        "ip": "172.20.10.8",
+        "ip":"172.20.10.8",
         "port": 8080
     },
     "downloaders":[
         {
-            "id": "downloader_1",
+            "id":"downloader_1",
             "ip":"172.20.10.8",
             "port": 8081
         },
         {
-            "id": "downloader_2",
-            "ip": "172.20.10.5",
+            "id":"downloader_2",
+            "ip":"172.20.10.12",
             "port": 8082   
         }
     ],
     "barrels":[
         {
-            "id": "barrel_1",
+            "id":"barrel_1",
             "ip":"172.20.10.8",
             "port":8084
         },
         {
-            "id": "barrel_2",
-            "ip":"172.20.10.5",
+            "id":"barrel_2",
+            "ip":"172.20.10.12",
             "port":8085
         }
     ]

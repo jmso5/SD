@@ -166,9 +166,8 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
             print(f"A descarregar: {url}")
 
             # Define um User-Agent para evitar bloqueios por alguns servidores
-            headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-            }
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"}
+
             resposta = requests.get(url,headers=headers, timeout=5) # faz pedido HTTP
 
             if resposta.status_code == 200 and 'text/html' in resposta.headers.get('Content-Type', ''): # resposta.status_code == 200 -> verifica se o pedido foi bem sucedido
@@ -258,7 +257,7 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                     continue
                 
                 # evita repetir páginas
-                if url in self.urls_visitadas:
+                if url in self.urls_visitadas: 
                     continue
 
                 html = self.processar_url(url) # faz download da página
@@ -302,7 +301,6 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                                 except grpc.RpcError as e:
                                     print(f"Erro RPC ao enviar palavra '{palavra}' para o Barrel. A tentar novamente...")
                     
-
                 # adiciona links à fila do Gateway
                 for link in info["links"]:
                     if link not in self.urls_visitadas and self.validador_url(link):
@@ -343,7 +341,6 @@ if __name__ == "__main__":
         - Ponto de entrada do programa.
         - Verifica argumentos, carrega configuração, inicia o servidor gRPC e o loop principal do Downloader.
     """
-
 
     # 1. Verifica e obtém o ID do argumento
     if len(sys.argv) < 2:

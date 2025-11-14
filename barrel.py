@@ -102,11 +102,6 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
                 replica_stub.guardar_dados_replica(empty_pb2.Empty()) # pede à réplica para carregar os dados
 
                 self.carregar_dados()
-
-                print(f"[Sincronizado] Fila de URLs sincronizada com réplica. URLs na fila: {self.fila.qsize()}.")
-                print(f"[Sincronizado] Indice invertido sincronizado com réplica. Entradas no índice: {len(self.indice_invertido)}.")
-                print(f"[Sincronizado] Urls visitadas sincronizadas com réplica. URLs visitadas: {len(self.urls_guardados)}.")
-            
             except grpc.RpcError as e:
                 print(f"[Erro] ao sincronizar fila com réplica: {e}")
                 
@@ -405,7 +400,7 @@ class BarrelServicer(index_pb2_grpc.StorageBarrelServicer, index_pb2_grpc.Gatewa
                 max_retries = 3
                 for attempt in range(max_retries):
                     try:
-                        stub.takeProcessedUrl(empty_pb2.Empty()) # notifica a réplica para retirar o próximo URL
+                        stub.takeProcessedUrl(empty_pb2.Empty()) # notifica a réplica para retirar o  URL
                         print(f"[Replica] Sucesso em takeNext para réplica (tentativa {attempt + 1}).")
                         break
                     except grpc.RpcError as e:
@@ -480,7 +475,6 @@ def load_config(file_path='config.json'):
         - Carrega a configuração do ficheiro JSON especificado.
         - Retorna o conteúdo do ficheiro como um dicionário Python.
     """
-
     try:
         with open(file_path, 'r') as f:
             return json.load(f)

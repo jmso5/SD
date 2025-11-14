@@ -6,14 +6,13 @@
 
    O Gateway é responsável por:
     1. Receber pedidos de pesquisa de palavras dos clientes e encaminhar esses pedidos para os Barrels disponíveis.
-    2. Cache local de pesquisas para uma só palavra para otimizar o desempenho.
     3. Balanceamento de carga e lógica de retry para Barrels (Failover).
     4. Receber pedidos de backlinks dos clientes e encaminhá-los para os Downloaders.
     5. Gerenciar a fila de URLs a visitar (putNew e takeNext) encaminhando os pedidos para os Barrels.
     6. Coletar e fornecer estatísticas sobre pesquisas e desempenho dos Barrels.  
 
     Para estas funcionalidades temos os seguintes métodos:
-        - searchWord: Pesquisa uma única palavra, com cache local e retry.
+        - searchWord: Pesquisa uma única palavra e retry.
         - searchVariousWords: Pesquisa várias palavras, agregando resultados.
         - getBacklinks: Obtém backlinks de um URL, agregando resultados de vários Downloaders.
         - putNew: Adiciona um novo URL à fila de URLs a visitar.
@@ -97,7 +96,6 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             stub = index_pb2_grpc.DownloaderStub(grpc.insecure_channel(address, options=options))
             self.downloader_stubs.append(stub)
 
-        self.cache = {} # cache local de pesquisas (palavra -> resultados)
         self.most_common_searches = {} # dicionário para contar as pesquisas mais comuns
 
         self.statistics_file = statistics_file
@@ -149,7 +147,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             print(f"[Gateway] Erro ao guardar estatísticas: {e}")
 
     def searchWord(self, request, context, max_tries=5):
-        """
+            """
         Método searchWord:
             - Recebe um pedido de um cliente para pesquisar uma palavra.
             - Verifica primeiramente se essa palavra já foi pesquisada anteriormente, ou seja, se já se encontra na cache local.
@@ -159,23 +157,16 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             - Atualiza o cache local com os resultados obtidos.
         """
        
-        word = request.word
-        self.most_common_searches[word] = self.most_common_searches.get(word, 0) + 1 # contagem da palavra nas estatisticas
+            word = request.word
+            self.most_common_searches[word] = self.most_common_searches.get(word, 0) + 1 # contagem da palavra nas estatisticas
 
-        available_barrels = self.available_barrels()
+            available_barrels = self.available_barrels()
 
-        # Verifica se há Barrels disponíveis
-        if not available_barrels:
-            print("Nenhum Barrel disponível para pesquisa.")
-            return index_pb2.SearchWordResponse(results=[])
-
-        # Verifica se a palavra já está na cache
-        if request.word in self.cache:
-            results = self.cache[request.word]
-            return index_pb2.SearchWordResponse(results=results)
-
-        else:
-
+            # Verifica se há Barrels disponíveis
+            if not available_barrels:
+                print("Nenhum Barrel disponível para pesquisa.")
+                return index_pb2.SearchWordResponse(results=[])
+    
             # seleção de Barrel aleatório e obtém stub
             stub = random.choice(available_barrels)
             barrel_address = self.barrel_stubs_map[stub] # obtém endereço do barrel selecionado para as estatísticas
@@ -292,7 +283,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
                         all_backlinks.update(response.backlinks) # Adiciona todos os backlinks encontrados
                     
                     print(f"[Gateway] Downloader em {address} contribuiu com {len(response.backlinks)} backlinks.")
-                    break # sucesso -> passa para o próximo stub
+                    break
                     
                 except grpc.RpcError as e:
                     print(f"[Gateway] Erro ao contactar Downloader em {address} (tentativa {attempt + 1}): {e}")
