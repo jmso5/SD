@@ -407,6 +407,25 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             top_searches=top_searches_words,
             barrel_stats=barrel_stats_list
         )
+    
+    def addToIndex(self, request, context):
+        
+        available_barrels = self.available_barrels()
+
+        if not available_barrels:
+            print("[Gateway] Nenhum Barrel disponível para addToIndex.")
+            return empty_pb2.Empty()
+        
+        for stub in available_barrels:
+            for attempt in range(MAX_RETRIES):
+                try:
+                    response = stub.addToIndex(request)
+                    print(f"[Gateway] Encaminhado addToIndex para Barrel: {request.url}")
+                    return response
+                except grpc.RpcError as e:
+                    print(f"[Gateway] Erro ao contactar Barrel em addToIndex: {e}")
+                    time.sleep(2)  # espera antes de tentar novamente
+        return empty_pb2.Empty() # falha após todas as tentativas
         
         
 def load_config(file_path='config.json'):

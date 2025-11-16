@@ -56,52 +56,16 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
         - barrel_stub: Lista de stubs gRPC para comunicar com os Storage Barrels.
     """
 
-    def __init__(self, barrel_address, gateway_address):
+    def __init__(self, gateway_address):
         """
         - Inicializa o Downloader, estabelecendo conexões gRPC com os Barrels e o Gateway.
         """
         self.urls_visitadas = set()     # fila de URLs já visitados
 
         self.gateway_address = gateway_address
-
-        self.barrel_stub = self.connect_barrel(barrel_address) # conexão gRPC com o Barrel
         self.gateway_stub = self.connect_gateway() # conexão gRPC com o Gateway
 
 
-    def connect_barrel(self, addrs): 
-        """
-        Método connect_barrel:
-            - Estabelece conexões gRPC com os Storage Barrels, criando os canais gRPC e os stubs necessários.
-            - Devolve uma lista de stubs para comunicação com os Barrels.
-        """
-
-        stubs = []
-        for addr in addrs:
-            channel = grpc.insecure_channel(addr) # cria canal gRPC
-            stub = index_pb2_grpc.StorageBarrelStub(channel) # stub para enviar mensagens
-            stubs.append(stub)
-
-        return stubs # devolve lista de stubs ativos
-    
-
-    def check_barrel_connections(self):  
-        """
-        Método check_barrel_connections:
-            - Verifica a disponibilidade dos Storage Barrels, tentando chamar um método simples (checkHealth) em cada stub.
-            - Devolve uma lista de stubs que estão ativos e disponíveis para comunicação.
-        """
-
-        available_barrels = []
-
-        for stub in self.barrel_stub:
-            try:
-                # tenta chamar um método simples para verificar se o barrel está ativo
-                stub.checkHealth(empty_pb2.Empty()) # método simples para testar conexão
-                available_barrels.append(stub) # se conseguir, mantém o stub
-            except grpc.RpcError:
-                continue
-
-        return available_barrels
     
     def connect_gateway(self):
         """
@@ -157,6 +121,7 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
         """
         Método processar_url:
             - Faz o download do conteúdo HTML de um URL.
+            - Usa o referer base extraído do URL para evitar bloqueios de servidores que exigem referer.
             - É utilizado um User-Agent para evitar bloqueios por alguns servidores.
             - É utilizada a função requests.get que devolve o conteúdo HTML da página.
             - Retorna o conteúdo HTML se bem sucedido, ou None em caso de falha.
@@ -165,8 +130,21 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
         try:
             print(f"A descarregar: {url}")
 
+            # Tenta extrair o "site" base para usar como Referer
+            parsed_url = urlparse(url)
+            referer_base = f"{parsed_url.scheme}://{parsed_url.netloc}/"
+
             # Define um User-Agent para evitar bloqueios por alguns servidores
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"}
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "pt-PT,pt;q=0.8,en-US;q=0.5,en;q=0.3",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+                "DNT": "1", # (Do Not Track - ironia, mas ajuda)
+                "Referer": referer_base
+            }
 
             resposta = requests.get(url,headers=headers, timeout=5) # faz pedido HTTP
 
@@ -189,7 +167,7 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
             - Converte links relativos em absolutos usando urljoin.
             - Retorna um dicionário com a informação extraída.
         """
-
+        
         soup = BeautifulSoup(html, "html.parser")
         # extrai título da página
         if soup.title:
@@ -260,6 +238,7 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                 if url in self.urls_visitadas: 
                     continue
 
+
                 html = self.processar_url(url) # faz download da página
                 if not html:
                     continue
@@ -270,26 +249,19 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                 print(f"NÚMERO DE LINKS ENCONTRADOS -> {len(info['links'])}")
                 print("-" * 60)
 
-                available_barrels = self.check_barrel_connections() # verifica conexões com barrels
-
-                if not available_barrels:
-                    print("Nenhum Barrel disponível. A aguardar 3 segundos antes de tentar novamente...")
-                    time.sleep(3)
-                    continue
 
                 # envia palavras para o Barrel
                 palavras = info["texto"].lower().split()
                 for palavra in palavras:
                     if palavra.isalpha(): # ignora números e símbolos
-                        for stub in available_barrels: # para cada barrel ativo
                             for attempt in range (MAX_RETRIES):
                                 try:
                                     links = []
                                     for link in info['links']:
                                         links.append(link)
 
-                                    # chama o método remoto no barrel
-                                    stub.addToIndex(
+                                    # chama o método remoto na gateway
+                                    self.gateway_stub.addToIndex(
                                         index_pb2.AddToIndexRequest(
                                             word=palavra,
                                             url=info["url"],
@@ -299,7 +271,8 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                                         )
                                     )
                                 except grpc.RpcError as e:
-                                    print(f"Erro RPC ao enviar palavra '{palavra}' para o Barrel. A tentar novamente...")
+                                    print(f"Erro RPC ao enviar palavra '{palavra}' para a Gateway. A tentar novamente...")
+                                    self.connect_gateway()
                     
                 # adiciona links à fila do Gateway
                 for link in info["links"]:
@@ -363,15 +336,11 @@ if __name__ == "__main__":
         print(f"ERRO: ID do Downloader '{downloader_id}' não encontrado na secção 'downloaders' do config.json.")
         sys.exit(1) 
 
-    # obter endereços dos barrels
-    barrel_addrs = []
-    for barrel_config in config['barrels']:
-        barrel_addrs.append(f"{barrel_config['ip']}:{barrel_config['port']}") 
 
     # obter endereço do gateway
     gateway_addr = f"{config['gateway']['ip']}:{config['gateway']['port']}"
 
-    d = Downloader(barrel_addrs, gateway_addr)
+    d = Downloader(gateway_addr)
 
     # 5. Inicia o Servidor gRPC e regista a instância Downloader
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=MAX_WORKERS))

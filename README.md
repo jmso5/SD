@@ -14,7 +14,7 @@ Este projeto é composto por três componentes principais:
 
 ## Como executar o projeto
 1. **Instalação**:
-    - É necessário instalar as bibliotecas do python necessárias, para tal, escrever 'pip install grpcio grpcio-tools requests beautifulsoup4' no terminal ou powershell
+    - É necessário instalar as bibliotecas do python necessárias, para tal, escrever 'pip install grpcio grpcio-tools requests beautifulsoup4 fastapi' no terminal ou powershell
 2. **Configuração**:
     - O ficheiro 'config.json' já define todos os endereços necessários para o sistema.
 3. **Instalação dos ficheiros index_pb2**
