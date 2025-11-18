@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Page</title>
+
+    <link href="/web/html/styling/searchStyling.css" rel="stylesheet" type="text/css">
+
+</head>
+<body>
+    <div class="search-container">
+        <form action="/search" method="get" class="search-form">
+            <button type="button" class="index-button" onclick=window.location.href='/'>
+                <img src="/web/html/images/logo.png" alt="Inicial Page" width="50" height="50">
+            </button>
+            <input type="text" name="query" class="search-box" placeholder="Search...">
+            <button type="submit" class="search-button">Search</button>
+            
+        </form>
+    </div>
+
+    {% if search_results %}
+        <h1 style = "display: flex; justify-content: center; align-items: center; ">Search Results</h1>
+        <div class="result-space" style="background: #F3EFE2FF;">
+            {% for result in search_results %}
+            <p data-url="{{ result.url }}" data-title="{{ result.title }}" data-citation="{{ result.citation }}">
+                <strong>Title:</strong> {{ result.title }}<br>
+                <strong>URL:</strong> <a href="{{ result.url }}" target="_blank">{{ result.url }}</a><br>
+                <strong>Citation:</strong> {{ result.citation }}
+            </p>
+            <form action="/back" method="get" class="search-button">
+                <input type="hidden" name="url" value="{{ result.url }}">
+                <button type="submit" class="search-button" onclick=window.location.href='/back'>See Backlinks</button>
+            </form>
+            {% endfor %}
+        </div>
+
+        
+        <div class="pagination" style="position: fixed">
+            <h3>Pages</h3>
+            {% if page > 1 %}
+            <a href="/search?query={{ query }}&page={{ page - 1 }}">Previous</a>
+            {% endif %}
+            <span>Page {{ page }} of {{ (total_results // results_per_page) + (1 if total_results % results_per_page else 0) }}</span>
+            {% if page * results_per_page < total_results %}
+            <a href="/search?query={{ query }}&page={{ page + 1 }}">Next</a>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="no-results">
+            <p>No results found...</p>
+        </div>
+    {% endif %}
+
+    <!-- Adicionando a opção de análise com openai-->
+    <div class="analysis-container"  style="display: flex; flex-direction: row; align-items: center; justify-content: left; text-align: center;
+        margin-bottom: 100px; margin-left: 430px; margin-top: 50px;">
+        <button type="button" onclick="generateAnalysis()" class="analysis-button">Generate Analysis</button>
+        <div id="analysis-result" class="analysis-result hidden"></div> <!-- Exibe o resultado da análise -->
+        <button type="button" class="search-button" onclick=indexing_hn()>HackerNews Indexing</button>
+    </div>
+
+  
+
+
+    <!-- Função para gerar a analise asincrona -->
+    <script>
+        /**
+         * Função para gerar a análise usando Mistralai
+         * @async
+         * @function generateAnalysis
+         * @returns {Promise<void>} - Retorna uma Promise que resolve quando a análise é gerada.
+         * @throws {Error} - Lança um erro se a solicitação falhar.
+         * @description Esta função coleta os termos de pesquisa e os snippets, envia uma solicitação POST para o servidor e exibe a análise gerada.
+         * */
+        async function generateAnalysis() {
+            const analysisResult = document.getElementById('analysis-result');
+            analysisResult.classList.remove('hidden'); // Torna o elemento visível
+
+            const searchTerms = "{{ query }}"; // Termos da pesquisa
+            const snippets = Array.from(document.querySelectorAll(".result-space p")).map(p => {
+                return {
+                    url: p.getAttribute("data-url"),
+                    title: p.getAttribute("data-title"),
+                    citation: p.getAttribute("data-citation")
+                };
+            });
+
+
+            try {
+                const response = await fetch('/generate-analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ search_terms: [searchTerms], snippets: snippets }),
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.analysis) {
+                        document.getElementById('analysis-result').textContent = data.analysis;
+                    } else {
+                        document.getElementById('analysis-result').textContent = "Erro ao gerar análise.";
+                    }
+                } else {
+                    console.error('Erro na solicitação:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+
+        /**
+         * Função para indexar histórias do Hacker News
+         * @async
+         * @function indexing_hn
+         * @returns {Promise<void>} - Retorna uma Promise que resolve quando a indexação é concluída.
+         * @throws {Error} - Lança um erro se a solicitação falhar.
+         * @description Esta função envia uma solicitação POST para o servidor para indexar histórias do Hacker News.
+         */
+        async function indexing_hn(){
+            // Obtém a query da pesquisa atual (renderizada pelo Jinja2)
+            const query = "{{ query }}";
+
+            try {
+                console.log("TRALALERO");
+                const response = await fetch('/hackernews/user-stories', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query }) // envia a query no corpo do pedido
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(data.message || "Indexação concluída!");
+                } else {
+                    alert("Erro ao indexar stories do Hacker News.");
+                }
+            } catch (error) {
+                alert("Erro de rede ao indexar: " + error);
+            }
+        }
+    </script>
+</body>
+</html>

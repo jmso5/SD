@@ -1,0 +1,163 @@
+/* --- ESTILOS GERAIS E LAYOUT --- */
+body {
+    font-family: 'Quicksand', sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 95vh; /* Aumenta a altura para centralizar melhor */
+    margin: 0;
+    background-color: #f7f9fc; /* Fundo branco suave (quase branco) */
+    color: #1c1c1e; /* Cor do texto principal */
+    transition: background-color 0.5s;
+}
+
+.search-container {
+    text-align: center;
+    margin-top: -150px; /* Sobe mais o título */
+    padding-bottom: 50px;
+}
+
+.search-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 40px; /* Mais espaço */
+}
+
+        /* --- TÍTULO --- */
+h1 {
+    font-size: 100px; /* Levemente menor para equilíbrio */
+    font-weight: 700;
+    color: #000000;
+    margin-top: -30px;
+       letter-spacing: -3px;
+}
+h2 {
+    font-size: 30px;
+    font-weight: 500;
+    color: #4a4a4a;
+    margin-top: 150px; /* Ajustado para melhor fluxo */
+}
+/* --- INPUTS E BOTÕES --- */
+.search-input {
+    width: 450px;
+    height: 50px; /* Maior para melhor toque */
+    padding: 10px 20px;
+    font-size: 18px;
+    border: none; /* Remove a borda padrão */
+    border-radius: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Sombra mais suave e proeminente */
+    outline: none;
+    transition: box-shadow 0.3s, transform 0.1s;
+}
+.search-input:focus {
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+    border: 2px solid #5d5dff; /* Destaque azul suave no foco */
+}
+
+.search-button {
+    margin-left: 15px;
+    height: 50px;
+    padding: 0 25px;
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    background-color: #5d5dff; /* Cor principal azul suave */
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s, box-shadow 0.3s;
+}
+.search-button:hover {
+    background-color: #4848d6;
+    box-shadow: 0 5px 8px rgba(0, 0, 0, 0.3);
+}
+/* --- SELECT TOGGLE (ÍNDICE/PESQUISA) --- */
+.toggle-select {
+    height: 50px;
+    font-size: 16px;
+    border: none;
+    border-radius: 25px;
+    padding: 0 20px;
+    outline: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.3s, background-color 0.3s;
+    color: black; 
+    margin-right: 15px;
+    background: #ffffff; /* Fundo branco */
+    /* REMOVIDO: background: black url(...) para usar apenas cor */
+    padding-left: 20px; 
+    font-weight: 500;
+}
+
+/* --- MONITOR CARD SECTION --- */
+.monitor-card {
+    margin-top: 50px;
+    width: 90%;
+    max-width: 1100px; 
+    padding: 20px;
+    /* Fundo transparente para que o fundo do body apareça */
+}
+
+.columns-container {
+    display: flex;
+    justify-content: space-around;
+    gap: 20px;
+    width: 100%;
+}
+
+.column {
+    flex: 1; 
+    min-width: 280px;
+    padding: 20px;
+    background: #ffffff; 
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08); /* Sombra elegante */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.column h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #5d5dff; /* Destaque na cor principal */
+    border-bottom: 2px solid #5d5dff;
+    padding-bottom: 5px;
+}
+        
+/* --- ESTILOS DE LISTAS E TABELAS DENTRO DAS COLUNAS --- */
+.column ul {
+    list-style: none;
+    padding: 0;
+    width: 100%;
+}
+.column li {
+    margin: 8px 0;
+    font-size: 16px;
+    text-align: left;
+    padding: 4px 0;
+    border-bottom: 1px dotted #e0e0e0;
+}
+        
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 16px;
+}
+table th, table td {
+    text-align: center;
+    padding: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+table th {
+    background-color: #f7f9fc;
+    font-weight: 700;
+    color: #4a4a4a;
+}

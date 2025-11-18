@@ -1,18 +1,33 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Backlinks</title>
 
-{% block content %}
-<div class="container">
-    <h2>Backlinks para:</h2>
-    <p><strong>{{ url }}</strong></p>
+    <link href="/web/html/styling/searchStyling.css" rel="stylesheet" type="text/css">
 
-    <ul class="backlinks-list">
+</head>
+<body>
+    <div class="search-container">
+        <form action="/search" method="get" class="search-form">
+            <button type="button" class="index-button" onclick=window.location.href='/index'>
+                <img src="/web/html/images/logo.png" alt="Inicial Page" width="50" height="50">
+            </button>
+            <button type="button" class="search-button" onclick="window.history.back()">Back</button>
+        </form>
+
+        <h1>Backlinks</h1>
         {% if backlinks %}
-            {% for link in backlinks %}
-            <li><a href="{{ link }}">{{ link }}</a></li>
-            {% endfor %}
+            <div class="result-space">
+                {% for backlink in backlinks %}
+                    <p data-url="{{ backlink.url }}" data-title="{{ backlink.title }}" data-citation="{{ backlink.citation }}">
+                        <strong>URL:</strong> <a href="{{ backlink.url }}" target="_blank">{{ backlink.url }}</a><br>
+                    </p>
+                {% endfor %}
+            </div>
         {% else %}
-            <li>Nenhum backlink conhecido para este URL.</li>
+            <p>Backlinks: Not Found</p>
         {% endif %}
-    </ul>
-</div>
-{% endblock %}
+    </div>
+</body>
+</html>
