@@ -1,0 +1,30 @@
+{
+    "gateway":{
+        "ip":"127.0.0.1",
+        "port": 8080
+    },
+    "downloaders":[
+        {
+            "id":"downloader_1",
+            "ip":"127.0.0.1",
+            "port": 8081
+        },
+        {
+            "id":"downloader_2",
+            "ip":"127.0.0.1",
+            "port": 8082   
+        }
+    ],
+    "barrels":[
+        {
+            "id":"barrel_1",
+            "ip":"127.0.0.1",
+            "port":8084
+        },
+        {
+            "id":"barrel_2",
+            "ip":"127.0.0.1",
+            "port":8085
+        }
+    ]
+}
