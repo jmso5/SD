@@ -74,24 +74,38 @@ h2 {
     background-color: #4848d6;
     box-shadow: 0 5px 8px rgba(0, 0, 0, 0.3);
 }
-/* --- SELECT TOGGLE (ÍNDICE/PESQUISA) --- */
-.toggle-select {
+
+.toggle-mode-button {
+    margin-right: 15px;
     height: 50px;
-    font-size: 16px;
+    width: 50px; 
     border: none;
-    border-radius: 25px;
-    padding: 0 20px;
-    outline: none;
+    border-radius: 50%; /* Torna-o redondo */
     cursor: pointer;
+    background-color: white;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transition: box-shadow 0.3s, background-color 0.3s;
-    color: black; 
-    margin-right: 15px;
-    background: #ffffff; /* Fundo branco */
-    /* REMOVIDO: background: black url(...) para usar apenas cor */
-    padding-left: 20px; 
-    font-weight: 500;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
 }
+
+.toggle-mode-button:hover {
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+    background-color: white;
+}
+
+/* Estilo do Ícone dentro do botão */
+.toggle-mode-button img {
+    width: 24px; 
+    height: 24px;
+    display: block;
+    object-fit: contain;
+    line-height: 0;
+}
+
+
 
 /* --- MONITOR CARD SECTION --- */
 .monitor-card {

@@ -5,6 +5,28 @@
     <title>Googol</title>
     <link href="/web/html/styling/indexStyling.css" rel="stylesheet" type="text/css">
     <script>
+
+        function toggleMode() {
+            const actionInput = document.getElementById('action');
+            const toggleIcon = document.getElementById('toggle-icon');
+            const searchInput = document.getElementById('input');
+
+            if (actionInput.value === 'search') {
+                // Mudar para o modo INDEXAR URL
+                actionInput.value = 'index';
+                toggleIcon.src = '/web/html/images/link-icon.png'; // Caminho do seu ícone de link
+                toggleIcon.alt = 'Modo Indexar URL';
+                searchInput.placeholder = 'Indexar URL';
+            } else {
+                // Mudar para o modo PESQUISAR PALAVRAS
+                actionInput.value = 'search';
+                toggleIcon.src = '/web/html/images/search-icon.png'; // Caminho do seu ícone de pesquisa
+                toggleIcon.alt = 'Modo Pesquisar Palavras';
+                searchInput.placeholder = 'Pesquisar Palavras';
+            }
+        }
+
+
         /**
          * Envia o formulário de pesquisa ou indexação usando AJAX.
          * @param {Event} event - O evento de envio do formulário.
@@ -14,13 +36,9 @@
             const form = event.target;
             const formData = new FormData(form);
             const input = formData.get('input');
-            const action = formData.get('action');
+            const action = document.getElementById('action').value;
 
-            if (!action) {
-                alert("Please select an option.");
-                return;
-            }
-
+        
             if (action === 'index' && !isValidUrl(input)) {
                 alert("Invalid URL. Please enter a URL that starts with https:// or http://.");
                 return;
@@ -76,15 +94,17 @@
         <h2>Bem-vindo ao</h2>
         <h1>Go<img src="/web/html/images/logo.png" style="height: 80px; vertical-align: middle;">gol</h1>
         <form onsubmit="submitForm(event)" class="search-bar">
-        <select name="action" id="action" class="toggle-select">
-            <option value="" disabled selected>Selecionar Ação</option>
-            <option value="index">Indexar URL</option>
-            <option value="search">Pesquisar Palavras</option>
-        </select>
-        <input type="text" class="search-input" id="input" name="input" placeholder="Pesquisar ou Indexar..." required>
-        <button type="submit" class="search-button">Executar</button>
-    </form>
     
+            <input type="hidden" name="action" id="action" value="search">
+            
+            <button type="button" id="toggle-mode-button" class="toggle-mode-button" onclick="toggleMode()">
+                <img id="toggle-icon" src="/web/html/images/search-icon.png" alt="Modo Pesquisar"> 
+            </button>
+            
+            <input type="text" class="search-input" id="input" name="input" placeholder="Pesquisar Palavras" required>
+            
+            <button type="submit" class="search-button">Executar</button>
+        </form>
     </div>
     <div id="monitor-card" class="monitor-card">
         <h3 style="text-align: center; font-size: 24px; color: #4a4a4a; margin-bottom: 25px;">Estatísticas do Servidor</h3>
