@@ -8,7 +8,7 @@ body {
 .search-container {
     
     width: 100%;
-    max-width: 500px;
+    max-width: 520px;
     margin: 40px auto 0 auto;
     display: flex;
     flex-direction: column;
@@ -62,9 +62,9 @@ body {
 }
 
 .pagination {
-    position: fixed;
-    left: 0;
-    bottom: 24px;
+    position: relative;
+    left: auto;
+    bottom: auto;
     width: 100%;
     display: flex;
     justify-content: center;
@@ -100,22 +100,47 @@ body {
     width: 320px;
     padding: 10px 16px;
     font-size: 16px;
-    border-radius: 24px 0 0 24px;
+    border-radius: 25px;
     border: 1px solid #ccc;
     outline: none;
 }
 
 .search-button {
+    margin-left: 10px;
     color: white;
-    background-color: black;
+    background-color: #5d5dff;
+    padding: 0 24px;
+    font-size: 16px;
     border: none;
-    border-radius: 0 24px 24px 0;
+    border-radius: 25px;
     cursor: pointer;
-    transition: background-color 0.2s ease-in-out;
+    transition: background-color 0.2s box-shadow 0.3s;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
     padding: 10px 24px;
     font-size: 16px;
-    margin-left: -1px; /* Remove duplo border */
+}
 
+.search-button:hover {
+    background-color: #4848d6;
+    box-shadow: 0 5px 8px rgba(0, 0, 0, 0.3);
+}
+
+.backlink-button {
+    margin-bottom: 10px;
+    color: white;
+    background-color: #292825;
+    padding: 0 20px;
+    font-size: 12px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.2s box-shadow 0.3s;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+    padding: 8px 20px;
+}
+.backlink-button:hover {
+    background-color: #000000;
+    box-shadow: 0 5px 8px rgba(0, 0, 0, 0.3);
 }
 
 .analysis-button {

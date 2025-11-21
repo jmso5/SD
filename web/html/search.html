@@ -2,48 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Search Page</title>
-
+    <title>Googol</title>
     <link href="/web/html/styling/searchStyling.css" rel="stylesheet" type="text/css">
+
+
+    <script>
+    async function submitForm(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const input = formData.get('input');
+
+        try {
+           window.location.href = `/search?query=${encodeURIComponent(input)}`;
+        } catch (error) {
+            console.error('Network error:', error);
+        }
+    }
+    </script>
 
 </head>
 <body>
     <div class="search-container">
-        <form action="/search" method="get" class="search-form">
-            <button type="button" class="index-button" onclick=window.location.href='/'>
+        <form onsubmit="submitForm(event)" class="search-form">
+            <button type="button" class="index-button" onclick="window.location.href='/'">
                 <img src="/web/html/images/logo.png" alt="Inicial Page" width="50" height="50">
             </button>
-            <input type="text" name="query" class="search-box" placeholder="Search...">
-            <button type="submit" class="search-button">Search</button>
+            <input type="text" name="input" class="search-box" placeholder="Pesquisar Palavras">
+
+            <button type="submit" class="search-button">Pesquisar</button>
             
         </form>
     </div>
 
     {% if search_results %}
-        <h1 style = "display: flex; justify-content: center; align-items: center; ">Search Results</h1>
+        <h1 style = "display: flex; justify-content: center; align-items: center; ">Resultados de Pesquisa </h1>
         <div class="result-space" style="background: #F3EFE2FF;">
             {% for result in search_results %}
             <p data-url="{{ result.url }}" data-title="{{ result.title }}" data-citation="{{ result.citation }}">
-                <strong>Title:</strong> {{ result.title }}<br>
+                <strong>Título:</strong> {{ result.title }}<br>
                 <strong>URL:</strong> <a href="{{ result.url }}" target="_blank">{{ result.url }}</a><br>
-                <strong>Citation:</strong> {{ result.citation }}
+                <strong>Citação:</strong> {{ result.text }}
             </p>
-            <form action="/back" method="get" class="search-button">
+            <form action="/get_backlinks" method="get">
                 <input type="hidden" name="url" value="{{ result.url }}">
-                <button type="submit" class="search-button" onclick=window.location.href='/back'>See Backlinks</button>
+                <button type="submit" class="backlink-button" onclick=window.location.href='/back'>Ver Backlinks</button>
             </form>
             {% endfor %}
         </div>
 
         
-        <div class="pagination" style="position: fixed">
-            <h3>Pages</h3>
-            {% if page > 1 %}
-            <a href="/search?query={{ query }}&page={{ page - 1 }}">Previous</a>
-            {% endif %}
-            <span>Page {{ page }} of {{ (total_results // results_per_page) + (1 if total_results % results_per_page else 0) }}</span>
-            {% if page * results_per_page < total_results %}
-            <a href="/search?query={{ query }}&page={{ page + 1 }}">Next</a>
+        <div class="pagination">
+            {% set total_pages = (total_results // results_per_page) + (1 if total_results % results_per_page else 0) %}
+            {% if total_pages > 1 %}
+                {% if page > 1 %}
+                    <a href="?query={{ query }}&page={{ page - 1 }}">Previous</a>
+                {% else %}
+                    <span class="disabled">Previous</span>
+                {% endif %}
+
+                <span>Page {{ page }} of {{ total_pages }}</span>
+
+                {% if page < total_pages %}
+                    <a href="?query={{ query }}&page={{ page + 1 }}">Next</a>
+                {% else %}
+                    <span class="disabled">Next</span>
+                {% endif %}
             {% endif %}
         </div>
     {% else %}

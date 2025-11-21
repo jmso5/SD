@@ -14,13 +14,13 @@
             if (actionInput.value === 'search') {
                 // Mudar para o modo INDEXAR URL
                 actionInput.value = 'index';
-                toggleIcon.src = '/web/html/images/link-icon.png'; // Caminho do seu ícone de link
+                toggleIcon.src = '/web/html/images/search-icon.png'; // Caminho do seu ícone de link
                 toggleIcon.alt = 'Modo Indexar URL';
                 searchInput.placeholder = 'Indexar URL';
             } else {
                 // Mudar para o modo PESQUISAR PALAVRAS
                 actionInput.value = 'search';
-                toggleIcon.src = '/web/html/images/search-icon.png'; // Caminho do seu ícone de pesquisa
+                toggleIcon.src = '/web/html/images/link-icon.png'; // Caminho do seu ícone de pesquisa
                 toggleIcon.alt = 'Modo Pesquisar Palavras';
                 searchInput.placeholder = 'Pesquisar Palavras';
             }
@@ -97,8 +97,8 @@
     
             <input type="hidden" name="action" id="action" value="search">
             
-            <button type="button" id="toggle-mode-button" class="toggle-mode-button" onclick="toggleMode()">
-                <img id="toggle-icon" src="/web/html/images/search-icon.png" alt="Modo Pesquisar"> 
+            <button type="button" id="toggle-mode-button" class="toggle-mode-button " onclick="toggleMode()">
+                <img id="toggle-icon" src="/web/html/images/link-icon.png"> 
             </button>
             
             <input type="text" class="search-input" id="input" name="input" placeholder="Pesquisar Palavras" required>
