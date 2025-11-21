@@ -147,7 +147,7 @@ async def search_word(request: Request, query: str = "", page: int = 1, debug_js
 
 # Rota para obter backlinks de um URL específico
 @router.get("/get_backlinks", response_class=HTMLResponse)
-async def get_backlinks(request: Request, url: str = ""):
+async def get_backlinks(request: Request, url: str = "", page: int = 1):
     """
     Rota para obter backlinks de um URL específico.
     :param request: Objeto de solicitação.
@@ -158,6 +158,8 @@ async def get_backlinks(request: Request, url: str = ""):
     A função carrega a configuração do cliente, conecta-se ao gateway e chama a função get_backlinks.
     Os backlinks são então renderizados na página HTML.
     """
+    global pageNum, jump
+
     backlinks = []
 
     config = load_config()
@@ -165,15 +167,29 @@ async def get_backlinks(request: Request, url: str = ""):
     gate_port = config['gateway']['port']
     client_instance = client.Client(gate_ip, gate_port)
 
-    backlinks = client_instance.search_backlinks(url)
+    raw_backlinks = client_instance.search_backlinks(url)
+
+    backlinks = [{"url": link} for link in raw_backlinks]
 
     print(f"Numero de backlinks recebidos para {url}: {len(backlinks)}")
+    
+    total_results = len(backlinks)
+        
+    start = (page - 1) * jump
+    end = start + jump
+    backlinks_result = backlinks[start:end]
+
+
+
 
     return templates.TemplateResponse(
         "backlinks.html",
         {
+            "backlinks": backlinks_result,
+            "page": page,
+            "total_results": total_results,
+            "results_per_page": jump,
             "request": request,
-            "backlinks": backlinks,
             "url": url
         }
     )

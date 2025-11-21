@@ -91,7 +91,7 @@ class Client:
                 request = index_pb2.SearchVariousWordsRequest(words=words)
                 response = self.stub.searchVariousWords(request)
                 
-            print("AQUI")
+            
 
             return response.results
 
@@ -178,7 +178,7 @@ class Client:
             print(f"\nBacklinks para '{url}':")
             for backlink in backlinks:
                 print(f"- {backlink}")
-            return backlinks
+            return backlinks 
 
         except grpc.RpcError as e:
             print(f"Não foi possível realizar o seu pedido. Tente novamente em 5 segundos.")

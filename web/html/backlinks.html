@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <title>Backlinks</title>
 
-    <link href="/web/html/styling/searchStyling.css" rel="stylesheet" type="text/css">
+    <link href="/web/html/styling/backlinkStyling.css" rel="stylesheet" type="text/css">
 
 </head>
 <body>
-    <div class="search-container">
+    <div class="result-space">
         <form action="/search" method="get" class="search-form">
             <button type="button" class="index-button" onclick=window.location.href='/index'>
                 <img src="/web/html/images/logo.png" alt="Inicial Page" width="50" height="50">
@@ -18,13 +18,34 @@
 
         <h1>Backlinks</h1>
         {% if backlinks %}
-            <div class="result-space">
+            <div class="backlink-list">
                 {% for backlink in backlinks %}
-                    <p data-url="{{ backlink.url }}" data-title="{{ backlink.title }}" data-citation="{{ backlink.citation }}">
+                    <p data-url="{{ backlink.url }}">
                         <strong>URL:</strong> <a href="{{ backlink.url }}" target="_blank">{{ backlink.url }}</a><br>
                     </p>
                 {% endfor %}
             </div>
+
+            {% set total_pages = (total_results // results_per_page) + (1 if total_results % results_per_page else 0) %}
+            {% if total_pages > 1 %}
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="?url={{ url }}&page={{ page - 1 }}" class="prev-button">Previous</a>
+                    {% else %}
+                        <span class="disabled prev-button">Previous</span>
+                    {% endif %}
+
+                    <span class="page-indicator">Page {{ page }} of {{ total_pages }}</span>
+
+                    {% if page < total_pages %}
+                        <a href="?url={{ url }}&page={{ page + 1 }}" class="next-button">Next</a>
+                    {% else %}
+                        <span class="disabled next-button">Next</span>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+
         {% else %}
             <p>Backlinks: Not Found</p>
         {% endif %}
