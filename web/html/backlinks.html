@@ -13,13 +13,14 @@
             <button type="button" class="index-button" onclick=window.location.href='/index'>
                 <img src="/web/html/images/logo.png" alt="Inicial Page" width="50" height="50">
             </button>
-            <button type="button" class="search-button" onclick="window.history.back()">Back</button>
+            <button type="button" class="search-button" onclick="window.location.href='/search?query={{ query|urlencode }}'">Back</button> 
         </form>
 
         <h1>Backlinks</h1>
         {% if backlinks %}
             <div class="backlink-list">
                 {% for backlink in backlinks %}
+                <div class="result-item">
                     <p data-url="{{ backlink.url }}">
                         <strong>URL:</strong> <a href="{{ backlink.url }}" target="_blank">{{ backlink.url }}</a><br>
                     </p>

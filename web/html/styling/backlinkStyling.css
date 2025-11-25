@@ -128,3 +128,13 @@ body {
 .hidden {
     display: none;
 }
+
+
+/* Caixas de cada resultado individual */
+.result-item {
+    margin-bottom: 15px;
+    padding: 18px;
+    background: #fafafa;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}

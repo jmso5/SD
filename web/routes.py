@@ -147,7 +147,7 @@ async def search_word(request: Request, query: str = "", page: int = 1, debug_js
 
 # Rota para obter backlinks de um URL específico
 @router.get("/get_backlinks", response_class=HTMLResponse)
-async def get_backlinks(request: Request, url: str = "", page: int = 1):
+async def get_backlinks(request: Request, url: str = "", page: int = 1, query: str = ""):
     """
     Rota para obter backlinks de um URL específico.
     :param request: Objeto de solicitação.
@@ -190,7 +190,8 @@ async def get_backlinks(request: Request, url: str = "", page: int = 1):
             "total_results": total_results,
             "results_per_page": jump,
             "request": request,
-            "url": url
+            "url": url,
+            "query": query
         }
     )
 

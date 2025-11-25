@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <title>Googol</title>
@@ -35,21 +35,39 @@
         </form>
     </div>
 
+   
     {% if search_results %}
-        <h1 style = "display: flex; justify-content: center; align-items: center; ">Resultados de Pesquisa </h1>
-        <div class="result-space" style="background: #F3EFE2FF;">
-            {% for result in search_results %}
-            <p data-url="{{ result.url }}" data-title="{{ result.title }}" data-citation="{{ result.citation }}">
-                <strong>Título:</strong> {{ result.title }}<br>
-                <strong>URL:</strong> <a href="{{ result.url }}" target="_blank">{{ result.url }}</a><br>
-                <strong>Citação:</strong> {{ result.text }}
-            </p>
-            <form action="/get_backlinks" method="get">
-                <input type="hidden" name="url" value="{{ result.url }}">
-                <button type="submit" class="backlink-button" onclick=window.location.href='/back'>Ver Backlinks</button>
-            </form>
-            {% endfor %}
+        <h1 style="display:flex; justify-content:center; align-items:center;">
+            Resultados de Pesquisa
+        </h1>
+
+        <!-- 🔵 CAIXA AZUL (EXTERIOR) -->
+        <div class="result-outer">
+
+            <!-- ⚪ CAIXA BRANCA (INTERIOR) -->
+            <div class="result-inner">
+
+                {% for result in search_results %}
+                <div class="result-item">
+
+                    <p data-url="{{ result.url }}" data-title="{{ result.title }}" data-citation="{{ result.citation }}">
+                        <strong>Título:</strong> {{ result.title }}<br>
+                        <strong>URL:</strong> <a href="{{ result.url }}" target="_blank">{{ result.url }}</a><br>
+                        <strong>Citação:</strong> {{ result.text }}
+                    </p>
+
+                    <form action="/get_backlinks" method="get">
+                        <input type="hidden" name="url" value="{{ result.url }}">
+                        <input type ="hidden" name="query" value="{{ result.query }}">
+                        <button type="submit" class="backlink-button">Ver Backlinks</button>
+                    </form>
+
+                </div>
+                {% endfor %}
+
+            </div>
         </div>
+
 
         
         <div class="pagination">
@@ -72,7 +90,10 @@
         </div>
     {% else %}
         <div class="no-results">
-            <p>No results found...</p>
+            <p><strong>Nenhum resultado encontrado para: {{ query }}</strong></p>
+
+            <img src="/web/html/images/no_results_found.jpg" alt="Sem resultados" style="margin-top:20px; width:250px; opacity:0.85;">
+
         </div>
     {% endif %}
 
