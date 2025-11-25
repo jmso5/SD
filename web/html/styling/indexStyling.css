@@ -10,7 +10,16 @@ body {
     background-color: #f7f9fc; /* Fundo branco suave (quase branco) */
     color: #1c1c1e; /* Cor do texto principal */
     transition: background-color 0.5s;
+    background: linear-gradient(45deg, #936b6b, #ab27e3, #05273e, #9ad75c);
+    background-size: 400% 400%;
+    animation: gradient-shift 15s ease infinite;
 }
+
+@keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
 
 .search-container {
     text-align: center;
@@ -29,16 +38,25 @@ body {
 h1 {
     font-size: 100px; /* Levemente menor para equilíbrio */
     font-weight: 700;
-    color: #000000;
+    color: #ffffff;
     margin-top: -30px;
        letter-spacing: -3px;
 }
 h2 {
     font-size: 30px;
     font-weight: 500;
-    color: #4a4a4a;
+    color: #ffffff;
     margin-top: 150px; /* Ajustado para melhor fluxo */
 }
+
+h3{
+    text-align: center; 
+    font-size: 24px; 
+    color: #ffffff; 
+    margin-bottom: 25px;
+}
+
+
 /* --- INPUTS E BOTÕES --- */
 .search-input {
     width: 450px;
@@ -53,7 +71,7 @@ h2 {
 }
 .search-input:focus {
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
-    border: 2px solid #5d5dff; /* Destaque azul suave no foco */
+    border: 2px solid #5d5dff; 
 }
 
 .search-button {
@@ -73,6 +91,8 @@ h2 {
 .search-button:hover {
     background-color: #4848d6;
     box-shadow: 0 5px 8px rgba(0, 0, 0, 0.3);
+    animation: shake 0.5s ease;
+
 }
 
 .toggle-mode-button {
@@ -93,6 +113,7 @@ h2 {
 .toggle-mode-button:hover {
     background-color: #4848d6;
     box-shadow: 0 5px 8px rgba(0, 0, 0, 0.3);
+    animation: shake 0.5s ease;
 }
 
 .toggle-mode-button img {
@@ -156,6 +177,34 @@ h2 {
     text-align: left;
     padding: 4px 0;
     border-bottom: 1px dotted #e0e0e0;
+}
+
+.logo-img{
+    height: 80px;
+    vertical-align: middle;
+    background: transparent !important;
+    cursor: pointer;
+}
+
+.logo-img:hover{
+   animation: spin 1s linear infinite;
+}
+
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-3px); }
 }
         
 table {

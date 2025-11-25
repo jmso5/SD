@@ -8,15 +8,18 @@
 
 </head>
 <body>
-    <div class="result-space">
-        <form action="/search" method="get" class="search-form">
-            <button type="button" class="index-button" onclick=window.location.href='/index'>
-                <img src="/web/html/images/logo.png" alt="Inicial Page" width="50" height="50">
-            </button>
-            <button type="button" class="search-button" onclick="window.location.href='/search?query={{ query|urlencode }}'">Back</button> 
-        </form>
+    <form action="/search" method="get" class="search-form">
+        <button type="button" class="index-button" onclick="window.location.href='/'">
+            <img src="/web/html/images/logo.png" alt="Inicial Page" width="50" height="50" id="logo-img">
+        </button>
+        <button type="button" class="search-button" onclick="window.location.href='/search_word?query={{ query }}&page={{ search_page|default(1) }}'">Back</button> 
+    </form>
 
-        <h1>Backlinks</h1>
+    <h1>Backlinks</h1>
+
+
+
+    <div class="result-space">
         {% if backlinks %}
             <div class="backlink-list">
                 {% for backlink in backlinks %}
@@ -24,32 +27,34 @@
                     <p data-url="{{ backlink.url }}">
                         <strong>URL:</strong> <a href="{{ backlink.url }}" target="_blank">{{ backlink.url }}</a><br>
                     </p>
+                </div>
                 {% endfor %}
             </div>
-
-            {% set total_pages = (total_results // results_per_page) + (1 if total_results % results_per_page else 0) %}
-            {% if total_pages > 1 %}
-                <div class="pagination">
-                    {% if page > 1 %}
-                        <a href="?url={{ url }}&page={{ page - 1 }}" class="prev-button">Previous</a>
-                    {% else %}
-                        <span class="disabled prev-button">Previous</span>
-                    {% endif %}
-
-                    <span class="page-indicator">Page {{ page }} of {{ total_pages }}</span>
-
-                    {% if page < total_pages %}
-                        <a href="?url={{ url }}&page={{ page + 1 }}" class="next-button">Next</a>
-                    {% else %}
-                        <span class="disabled next-button">Next</span>
-                    {% endif %}
-                </div>
-            {% endif %}
 
 
         {% else %}
             <p>Backlinks: Not Found</p>
         {% endif %}
     </div>
+    {% set total_pages = (total_results // results_per_page) + (1 if total_results % results_per_page else 0) %}
+    {% if total_pages > 1 %}
+        <div class="pagination">
+            {% if page > 1 %}
+                <a href="?url={{ url }}&query={{ query }}&search_page={{ search_page }}&page={{ page - 1 }}" class="prev-button">Previous</a>
+            {% else %}
+                <span class="disabled prev-button">Previous</span>
+            {% endif %}
+
+            <span class="page-indicator">Page {{ page }} of {{ total_pages }}</span>
+
+            {% if page < total_pages %}
+                <a href="?url={{ url }}&query={{ query }}&search_page={{ search_page }}&page={{ page + 1 }}" class="next-button">Next</a>
+            {% else %}
+                <span class="disabled next-button">Next</span>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <script src="/web/html/confetti.js"></script>
 </body>
 </html>

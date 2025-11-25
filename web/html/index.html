@@ -27,6 +27,7 @@
         }
 
 
+
         /**
          * Envia o formulário de pesquisa ou indexação usando AJAX.
          * @param {Event} event - O evento de envio do formulário.
@@ -92,7 +93,9 @@
 <body>
     <div class="search-container">
         <h2>Bem-vindo ao</h2>
-        <h1>Go<img src="/web/html/images/logo.png" style="height: 80px; vertical-align: middle;">gol</h1>
+        <h1>Go<img src="/web/html/images/logo.png" class= "logo-img" id="logo-img">gol</h1>
+      
+
         <form onsubmit="submitForm(event)" class="search-bar">
     
             <input type="hidden" name="action" id="action" value="search">
@@ -103,11 +106,13 @@
             
             <input type="text" class="search-input" id="input" name="input" placeholder="Pesquisar Palavras" required>
             
-            <button type="submit" class="search-button">Executar</button>
+            <button type="submit" class="search-button" >Executar</button>
+
         </form>
     </div>
+
     <div id="monitor-card" class="monitor-card">
-        <h3 style="text-align: center; font-size: 24px; color: #4a4a4a; margin-bottom: 25px;">Estatísticas do Servidor</h3>
+        <h3>Estatísticas do Servidor</h3>
         <div class="columns-container">
             <div class="column">
                 <h4>Top 10 Pesquisas</h4>
@@ -145,6 +150,6 @@
             </div>
         </div>
     </div>
-     <script src="/static/assets/websocket.js?v=<%= Date.now() %>"></script>
+    <script src="/web/html/confetti.js"></script>
 </body>
 </html>

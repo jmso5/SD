@@ -3,6 +3,24 @@ body {
     margin: 0;
     background-color: white;
     min-height: 100vh;
+    background: linear-gradient(45deg, #936b6b, #ab27e3, #05273e, #9ad75c);
+    background-size: 400% 400%;
+    animation: gradient-shift 15s ease infinite;
+}
+
+@keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+
+h1{
+    display:flex; 
+    justify-content:center; 
+    align-items:center; 
+    color:white;   
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    margin-top: 80px
 }
 
 
@@ -29,7 +47,7 @@ body {
     background: #ffffff;
     max-width: 1000px;      /* Limita a largura da caixa */
     border-radius: 16px;
-    margin: 20px auto 0 auto; /* Centraliza horizontalmente e espaça em cima */
+    margin: 0 auto 0 auto; /* Centraliza horizontalmente e espaça em cima */
     display: flex;
     flex-direction: column;
     padding: 20px 28px;
@@ -45,10 +63,16 @@ body {
 
 
 .search-form {
+    position: absolute;
+    top: 20px;
+    right: 1060px; 
     display: flex;
     flex-direction: row;
     align-items: center;
+    gap: 12px;
+    z-index: 100;
 }
+
 
 .index-button {
     background: none;
@@ -60,40 +84,58 @@ body {
     align-items: center; 
 }
 
+.index-button:hover{
+   animation: spin 1s linear infinite;
+}
+
 .pagination {
-    position: relative;
-    left: auto;
-    bottom: auto;
-    width: 100%;
     display: flex;
     justify-content: center;
-    align-items: flex-end;
-    gap: 8px;
-    z-index: 10;
+    align-items: center;
+    gap: 12px;
+    margin: 30px auto;
+    max-width: 1000px;
+}
+
+.prev-button,
+.next-button,
+.page-indicator {
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.2s;
 }
 
 .prev-button,
 .next-button {
-    margin-top: auto;
-    width: 70px;
-    height: 40px;
     background-color: #5d5dff;
-    border-radius: 12px;
+    color: white;
+    text-decoration: none;
     border: none;
-    color: #fffefe;
-    font-size: 16px;
-    font-weight: bold;
-    margin: 0 4px;
     cursor: pointer;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 60px;
+    text-align: center; 
 }
 
 .prev-button:hover,
 .next-button:hover {
     background-color: #4848d6;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.disabled {
+    background-color: #cccccc;
+    color: #666666;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.page-indicator {
+    background-color: #f0f0f0;
+    color: #333;
+    padding: 10px 20px;
 }
 
 .search-box {
@@ -104,6 +146,8 @@ body {
     border: 1px solid #ccc;
     outline: none;
 }
+
+
 
 .search-button {
     margin-left: 10px;
@@ -123,12 +167,12 @@ body {
 .search-button:hover {
     background-color: #4848d6;
     box-shadow: 0 5px 8px rgba(0, 0, 0, 0.3);
+    animation: shake 0.5s ease;
 }
 
 .hidden {
     display: none;
 }
-
 
 /* Caixas de cada resultado individual */
 .result-item {
@@ -137,4 +181,56 @@ body {
     background: #fafafa;
     border-radius: 12px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    width: 100%;
+    box-sizing: border-box;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+    animation: fadeInUp 0.5s ease forwards;
+    opacity: 0;
+}
+
+.result-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+
+.result-item:nth-child(1) { animation-delay: 0.2s; }
+.result-item:nth-child(2) { animation-delay: 0.4s; }
+.result-item:nth-child(3) { animation-delay: 0.8s; }
+.result-item:nth-child(4) { animation-delay: 1s; }
+.result-item:nth-child(5) { animation-delay: 1.2s; }
+.result-item:nth-child(6) { animation-delay: 1.4s; }
+.result-item:nth-child(7) { animation-delay: 1.6s; }
+.result-item:nth-child(8) { animation-delay: 1.8s; }
+.result-item:nth-child(9) { animation-delay: 2s; }
+.result-item:nth-child(10) { animation-delay: 2.2s; }
+
+
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-3px); }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

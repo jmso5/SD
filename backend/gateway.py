@@ -67,6 +67,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         self.downloader_stubs = [] # lista de stubs para os Downloaders
         self.barrel_stubs = []
         self.barrel_stubs_map = {} # mapeia endereços para stubs de Barrels 
+        self.downloader_stubs_map = {}
 
 
 
@@ -92,6 +93,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         for address in downloader_addresses:
             stub = index_pb2_grpc.DownloaderStub(grpc.insecure_channel(address, options=options))
             self.downloader_stubs.append(stub)
+            self.downloader_stubs_map[stub] = address
 
         self.most_common_searches = {} # dicionário para contar as pesquisas mais comuns
 
@@ -113,6 +115,22 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
                 continue
 
         return available_barrels
+    
+    def available_downloaders(self):
+        """
+        Método available_downloaders:
+            - Verifica quais os Downloaders disponíveis (ativos) através de chamadas de health check.
+            - Retorna uma lista de stubs dos Downloaders disponíveis.
+        """
+        available_downloaders = []        
+        for stub in self.downloader_stubs:
+            try:
+                stub.checkHealth(empty_pb2.Empty()) 
+                available_downloaders.append(stub)
+            except grpc.RpcError:
+                continue
+
+        return available_downloaders
     
     def load_statistics(self):
         """
@@ -260,28 +278,29 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
             return index_pb2.BacklinksResponse(backlinks=[])
             
         # itera sobre cada Downloader ativo
-        for stub_index, stub in enumerate(self.downloader_stubs):
-            
-            # verificação de segurança (caso o número de stubs ativos não corresponda ao número de endereços)
-            if stub_index < len(self.downloader_addresses):
-                address = self.downloader_addresses[stub_index]
-            else:
-                address = print(f"Downloader Index {stub_index}")
-            
-            for attempt in range(max_retries):
-                try:
-                    response = stub.getBacklinks(index_pb2.PutNewRequest(url=url)) # envia o pedido para este Downloader
+        available_downloaders = self.available_downloaders()
 
-                    if response.backlinks:
-                        all_backlinks.update(response.backlinks) # Adiciona todos os backlinks encontrados
-                    
-                    print(f"[Gateway] Downloader em {address} contribuiu com {len(response.backlinks)} backlinks.")
-                    break
-                    
-                except grpc.RpcError as e:
-                    print(f"[Gateway] Erro ao contactar Downloader em {address} (tentativa {attempt + 1}): {e}")
-                    if attempt == max_retries - 1:
-                        print(f"[Gateway] Falha permanente ao contactar Downloader em {address}.")
+                
+                
+        for attempt in range(max_retries):
+            stub = random.choice(available_downloaders)
+                
+                
+            address = self.downloader_stubs_map.get(stub)
+            try:
+                response = stub.getBacklinks(index_pb2.PutNewRequest(url=url)) # envia o pedido para este Downloader
+
+                if response.backlinks:
+                    all_backlinks.update(response.backlinks) # Adiciona todos os backlinks encontrados
+                        
+                print(f"[Gateway] Downloader em {address} contribuiu com {len(response.backlinks)} backlinks.")
+                break
+                        
+            except grpc.RpcError as e:
+                print(f"[Gateway] Erro ao contactar Downloader em {address} (tentativa {attempt + 1}): {e}")
+                if attempt == max_retries - 1:
+                    print(f"[Gateway] Falha permanente ao contactar Downloader em {address}.")
+            
 
         # retornar todos os resultados agregados
         return index_pb2.BacklinksResponse(backlinks=list(all_backlinks))
@@ -327,10 +346,9 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         for attempt in range(max_retries):
             stub = random.choice(available_barrels) # escolhe um Barrel aleatoriamente
 
-            
             try:
                 response = stub.takeNext(request) 
-
+    
                 # se o Barrel retornar um URL válido -> retorna imediatamente
                 if response.url:
                     return response

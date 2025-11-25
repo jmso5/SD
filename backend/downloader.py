@@ -294,7 +294,16 @@ class Downloader(index_pb2_grpc.DownloaderServicer):
                 print(f"Erro RPC ao obter URL da fila: {e}.")
                 self.connect_gateway()
                 time.sleep(1)
-                continue     
+                continue  
+
+    def checkHealth(self, request, context):   
+        """
+        Método checkHealth:
+            - Método simples para verificar se o barrel está ativo.
+            - Retorna uma resposta vazia se o barrel estiver operacional.
+        """
+
+        return empty_pb2.Empty()
                        
 
 

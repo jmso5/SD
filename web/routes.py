@@ -65,7 +65,7 @@ async def index_url(url: str = Form(...)):
 #Rota para realizar buscas
 #@router.get("/search_word", response_class = HTMLResponse)
 @router.get("/search_word", response_class=JSONResponse)
-async def search_word(request: Request, query: str = "", page: int = 1, debug_json: bool = False):
+async def search_word(request: Request, query: str = "", page: int = 1):
     """
     Rota para realizar buscas.
     :param request: Objeto de solicitação.
@@ -147,7 +147,7 @@ async def search_word(request: Request, query: str = "", page: int = 1, debug_js
 
 # Rota para obter backlinks de um URL específico
 @router.get("/get_backlinks", response_class=HTMLResponse)
-async def get_backlinks(request: Request, url: str = "", page: int = 1, query: str = ""):
+async def get_backlinks(request: Request, url: str = "", page: int = 1, query: str = "", search_page: int = 1):
     """
     Rota para obter backlinks de um URL específico.
     :param request: Objeto de solicitação.
@@ -180,13 +180,12 @@ async def get_backlinks(request: Request, url: str = "", page: int = 1, query: s
     backlinks_result = backlinks[start:end]
 
 
-
-
     return templates.TemplateResponse(
         "backlinks.html",
         {
             "backlinks": backlinks_result,
             "page": page,
+            "search_page": search_page,
             "total_results": total_results,
             "results_per_page": jump,
             "request": request,
