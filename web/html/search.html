@@ -102,7 +102,7 @@
         margin-bottom: 100px; margin-left: 430px; margin-top: 50px;">
         <button type="button" onclick="generateAnalysis()" class="analysis-button">Generate Analysis</button>
         <div id="analysis-result" class="analysis-result hidden"></div> <!-- Exibe o resultado da análise -->
-        <button type="button" class="search-button" onclick=indexing_hn()>HackerNews Indexing</button>
+        <button type="button" class="search-button" onclick=hackernews()>HackerNews Indexing</button>
     </div>
 
   
@@ -164,7 +164,7 @@
          * @throws {Error} - Lança um erro se a solicitação falhar.
          * @description Esta função envia uma solicitação POST para o servidor para indexar histórias do Hacker News.
          */
-        async function indexing_hn(){
+        async function hackernews(){
             // Obtém a query da pesquisa atual (renderizada pelo Jinja2)
             const query = "{{ query }}";
 
@@ -179,8 +179,14 @@
                 });
 
                 if (response.ok) {
-                    const data = await response.json();
-                    alert(data.message || "Indexação concluída!");
+                    const data = await response.json(); // ADICIONE ESTA LINHA - Parse do JSON
+                    if (data.num_indexed == 0){
+                        alert("No new stories were indexed from Hacker News.");
+                        
+                    }
+                    else{
+                        alert('Foram indexadas ' + data.num_indexed + ' novas stories do Hacker News.');
+                    }
                 } else {
                     alert("Erro ao indexar stories do Hacker News.");
                 }

@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
+from fastapi import Body
 
 # Adiciona a diretoria 'pai' (backend) ao sys.path para encontrar o client.py
 current_dir = os.path.dirname(os.path.abspath(__file__)) # pasta web
@@ -32,6 +33,7 @@ app.mount("/web/html", StaticFiles(directory=os.path.join(web_dir, "html")), nam
 templates = Jinja2Templates(directory=os.path.join(web_dir, "html"))
 jump = 10  # Número de resultados por página
 pageNum = 1  # Página atual
+
 
 
 # Rota para a página inicial
@@ -193,6 +195,65 @@ async def get_backlinks(request: Request, url: str = "", page: int = 1, query: s
             "query": query
         }
     )
+
+
+# Rota para integração com a API do Hacker News para histórias do usuário
+@router.post("/hackernews/user-stories")
+async def hacker_news_user_stories(querys_hn: dict = Body(...)):
+    """
+    Rota para ir buscar o top stories do Hacker News.
+    :param query_dict: Dicionário que contém o que é para ser pesquisado.
+    :return: Mensagem de sucesso ou erro.
+
+    Depois de receber as top stories do Hacker News, vai buscar a query e vai verificar se existe alguma
+    story que contenha as palavras desejadas para esse link ser então indexado.
+    Faz uso da função submit_url do cliente para enviar o URL para o gateway.
+    Se nada for indexado vai aparecer uma messagem que assim o diz.
+    """
+    config = load_config()
+    gate_ip = config['gateway']['ip']
+    gate_port = config['gateway']['port']
+    client_instance = client.Client(gate_ip, gate_port)
+    queries = querys_hn.get("query", "").split()
+    num_indexed = 0
+   
+    try:
+        top_stories = requests.get("https://hacker-news.firebaseio.com/v0/topstories.json").json()
+
+        for ids in top_stories:
+            story = requests.get(f"https://hacker-news.firebaseio.com/v0/item/{ids}.json").json()
+            text = story.get("text", " ")
+            url = story.get("url", "")
+            print(f"Story URL: {url}")
+
+            num_queries_found = 0
+            for query in queries:
+                if query in text:
+                    num_queries_found += 1
+
+
+            if num_queries_found == len(queries):
+                url = story.get("url", "")
+                if url:
+                    print(f"Indexing story with URL: {url}")
+                    client_instance.submit_url(url)
+                    num_indexed += 1
+
+    except Exception as e:
+        return {f"Erro ao buscar histórias do Hacker News: {str(e)}"}
+    
+    print(f"Total de histórias indexadas do Hacker News: {num_indexed}")
+
+    return {
+        "num_indexed": num_indexed,
+    }
+
+@router.post("/geminiAPI")
+async def gemini_api():
+
+    config = load_config()
+    api_key = config['api_key']['gemini_key']
+
 
 def load_config():
     """

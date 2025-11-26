@@ -26,5 +26,8 @@
             "ip":"127.0.0.1",
             "port":8085
         }
-    ]
+    ],
+    "api_key":{
+        "gemini_key": "AIzaSyCWDuOFlg4hAcJhKr_aT2dFQPvD9kPTIrQ"
+    }
 }

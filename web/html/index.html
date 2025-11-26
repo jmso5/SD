@@ -17,12 +17,14 @@
                 toggleIcon.src = '/web/html/images/search-icon.png'; // Caminho do seu ícone de link
                 toggleIcon.alt = 'Modo Indexar URL';
                 searchInput.placeholder = 'Indexar URL';
+                toggleButton.setAttribute('data-tooltip', 'Mudar para Pesquisar Palavras');
             } else {
                 // Mudar para o modo PESQUISAR PALAVRAS
                 actionInput.value = 'search';
                 toggleIcon.src = '/web/html/images/link-icon.png'; // Caminho do seu ícone de pesquisa
                 toggleIcon.alt = 'Modo Pesquisar Palavras';
                 searchInput.placeholder = 'Pesquisar Palavras';
+                toggleButton.setAttribute('data-tooltip', 'Mudar para Indexar URL');
             }
         }
 
@@ -100,7 +102,7 @@
     
             <input type="hidden" name="action" id="action" value="search">
             
-            <button type="button" id="toggle-mode-button" class="toggle-mode-button " onclick="toggleMode()">
+            <button type="button" id="toggle-mode-button" class="toggle-mode-button " onclick="toggleMode()"  data-tooltip="Mudar para Indexar URL">
                 <img id="toggle-icon" src="/web/html/images/link-icon.png"> 
             </button>
             
