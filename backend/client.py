@@ -124,43 +124,40 @@ class Client:
 
     def statistics(self):
         """
-        - Método que obtém as estatísticas do sistema.
-        - Apresenta as 10 pesquisas mais comuns, a lista de barrels ativos e os respetivos tamanhos dos indices 
-        e o tempo médio de resposta a pesquisas medido pela Gateway descriminado por Barrel (em décimas de segundo).
+        - Obtém estatísticas do sistema a partir do Gateway e retorna um
+          dicionário simples (JSON-serializável) com as chaves:
+          { "top_searches": [...], "barrel_stats": [{ "barrel_id": ..., "index_size": ..., "avg_response_time": ...}, ...] }
         """
-
-        print("\n--- Estatísticas do Sistema ---")
         try:
-            response = self.stub.getStatistics(empty_pb2.Empty()) # chama o método RPC getStatistics do gateway
+            response = self.stub.getStatistics(empty_pb2.Empty())  # chama o método RPC getStatistics do gateway
 
-            # 1. top 10 pesquisas
-            print("\nTop 10 Pesquisas Mais Comuns:")
-            if response.top_searches:
-                for i, word in enumerate(response.top_searches):
-                    print(f"   {i+1}. {word}")
-            else:
-                print("\tNenhuma pesquisa registada.")
+            # Extrair top_searches (protobuf repeated -> list)
+            top_searches = list(response.top_searches) if hasattr(response, "top_searches") else []
 
+            # Extrair estatísticas dos barrels e converter para tipos primitivos
+            barrel_stats = []
+            for stat in getattr(response, "barrel_stats", []):
+                barrel_id = stat.barrel_id if isinstance(stat.barrel_id, str) else str(stat.barrel_id)
+                # rsplit para evitar partir IPv6 (opcional se quiseres só a porta)
+                # display_id = barrel_id.rsplit(":", 1)[-1] if isinstance(barrel_id, str) and ":" in barrel_id else barrel_id
 
-            # 2. estatísticas dos Barrels (tamanho do índice + tempo médio de resposta)
-            print("\n Estatísticas:")
-            if response.barrel_stats:
-                print(f"{'ID do Barrel'} | {'Tamanho do Índice'} | {'Tempo Médio (ds)'}")
-                for stat in response.barrel_stats:
-                    #  mostra apenas a porta (não o IP completo) para simplificar a visualização
-                    if ':' in stat.barrel_id:
-                        display_id = stat.barrel_id.split(':')[-1]
-                    else:
-                        display_id = stat.barrel_id
+                barrel_stats.append({
+                    "barrel_id": barrel_id,
+                    "index_size": int(getattr(stat, "index_size", 0)),
+                    "avg_response_time": float(getattr(stat, "avg_response_time", 0.0))
+                })
 
-                    print(f"{'Porta ' + display_id} | {stat.index_size} | {stat.avg_response_time}")
-            else:
-                print("Nenhuma estatística de Barrel disponível.")
+            return {
+                "top_searches": top_searches,
+                "barrel_stats": barrel_stats
+            }
 
         except grpc.RpcError as e:
-            print(f"Não foi possível realizar o seu pedido. Tente novamente em 5 segundos.")
-            time.sleep(5)
-
+            print(f"[Client] Erro ao obter estatísticas do Gateway: {e}")
+            # Retornar estrutura vazia previsível para o websocket não falhar
+            return {"top_searches": [], "barrel_stats": []}
+        
+        
     def search_backlinks(self, url):
         """
         - Método que obtém os backlinks de um URL.

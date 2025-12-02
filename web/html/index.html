@@ -4,12 +4,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;500;700&display=swap" rel="stylesheet">
     <title>Googol</title>
     <link href="/web/html/styling/indexStyling.css" rel="stylesheet" type="text/css">
+    <link href="/web/html/styling/background.css" rel="stylesheet" type="text/css">
     <script>
 
         function toggleMode() {
+            const toggleButton = document.getElementById('toggle-mode-button');
             const actionInput = document.getElementById('action');
             const toggleIcon = document.getElementById('toggle-icon');
             const searchInput = document.getElementById('input');
+
 
             if (actionInput.value === 'search') {
                 // Mudar para o modo INDEXAR URL
@@ -90,12 +93,103 @@
                 return false;
             }
         }
+
+        const host = window.location.host;
+        const wsUrl = `ws://${host}/ws/stats`;
+        let ws;
+        
+        function connectWebSocket(){
+            ws = new WebSocket(wsUrl);
+            ws.onopen = function(event) {
+                console.log("WebSocket connection established.");
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                updateStats(data); 
+            };
+
+            ws.onclose = function(event) {
+                console.log("WebSocket connection closed. Reconnecting in 5 seconds...");
+                setTimeout(connectWebSocket, 5000); 
+            };
+
+            ws.onerror = function(error) {
+                console.error("WebSocket error:", error);
+            };
+        }
+
+        function updateStats(stats){
+            // atualizar Top 10 Pesquisas
+            const topSearchesList = document.getElementById("top-searches-list");
+            topSearchesList.innerHTML = "";
+            
+            if(stats.top_searches && stats.top_searches.length > 0){
+                stats.top_searches.forEach((word, index) => {
+                    topSearchesList.innerHTML += `<li>${index + 1}. ${word}</li>`;
+                });
+            } else {
+                topSearchesList.innerHTML = "<li>Nenhuma pesquisa registada.</li>";
+            }
+            // tempo de resposta e tamanho do índice
+            const timingTable = document.getElementById("barrel-timings-table");
+            const indexTable = document.getElementById("active-barrels-table");
+            timingTable.innerHTML = "";
+            indexTable.innerHTML = "";
+
+            if(stats.barrel_stats && stats.barrel_stats.length > 0){
+                stats.barrel_stats.forEach(stat => {
+                    const displayID = stat.barrel_id.split(':').pop(); // mostra apenas a porta
+
+                    // tabela de tempos
+                    timingTable.innerHTML += `
+                        <tr>
+                            <td>Porta ${displayID}</td>
+                            <td>${stat.avg_response_time}</td>
+                        </tr>
+                    `;
+
+                    // tabela de tamanhos do índice
+                    indexTable.innerHTML += `
+                        <tr>
+                            <td>Porta ${displayID}</td>
+                            <td>${stat.index_size}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                timingTable.innerHTML = "<tr><td colspan='2'>Nenhum Barrel ativo.</td></tr>";
+                indexTable.innerHTML = "<tr><td colspan='2'>Nenhum Barrel ativo.</td></tr>";
+            }
+        }
+        // iniciar a conexão WebSocket ao carregar a página
+        window.onload = function() {
+            connectWebSocket();
+        };
+
+    
     </script>
 </head>
 <body>
+    <!-- Mind Flayer Background -->
+    <div class="mind-flayer-background" id="mind-flayer"></div>
+    <div class="mind-flayer-glow" id="mind-flayer-glow"></div>
+
+    <!-- Container de Raios Realistas do Upside Down -->
+    <div class="lightning-container" id="lightning-container"></div>
+
+    <!-- Flash de tela -->
+    <div class="screen-flash" id="screen-flash"></div>
+
+    <!-- Brilho ambiente -->
+    <div class="ambient-glow"></div>
+
+    <script src="/web/html/background.js"></script>
+
+
     <div class="search-container">
         <h2>Bem-vindo ao</h2>
-        <h1>Go<img src="/web/html/images/logo.png" class= "logo-img" id="logo-img">gol</h1>
+        <h1>Go<img src="/web/html/images/logo.jpg" class= "logo-img" id="logo-img">gol</h1>
       
 
         <form onsubmit="submitForm(event)" class="search-bar">

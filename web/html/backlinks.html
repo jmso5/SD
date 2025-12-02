@@ -5,12 +5,29 @@
     <title>Backlinks</title>
 
     <link href="/web/html/styling/backlinkStyling.css" rel="stylesheet" type="text/css">
+    <link href="/web/html/styling/background.css" rel="stylesheet" type="text/css">
 
 </head>
 <body>
+    <!-- Mind Flayer Background -->
+    <div class="mind-flayer-background" id="mind-flayer"></div>
+    <div class="mind-flayer-glow" id="mind-flayer-glow"></div>
+
+    <!-- Container de Raios Realistas do Upside Down -->
+    <div class="lightning-container" id="lightning-container"></div>
+
+    <!-- Flash de tela -->
+    <div class="screen-flash" id="screen-flash"></div>
+
+    <!-- Brilho ambiente -->
+    <div class="ambient-glow"></div>
+
+    <script src="/web/html/background.js"></script>
+
+
     <form action="/search" method="get" class="search-form">
         <button type="button" class="index-button" onclick="window.location.href='/'">
-            <img src="/web/html/images/logo.png" alt="Inicial Page" width="50" height="50" id="logo-img">
+            <img src="/web/html/images/logo.jpg" alt="Inicial Page" width="50" height="50" id="logo-img">
         </button>
         <button type="button" class="search-button" onclick="window.location.href='/search_word?query={{ query }}&page={{ search_page|default(1) }}'">Back</button> 
     </form>

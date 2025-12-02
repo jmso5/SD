@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Googol</title>
     <link href="/web/html/styling/searchStyling.css" rel="stylesheet" type="text/css">
-
+    <link href="/web/html/styling/background.css" rel="stylesheet" type="text/css">
 
     <script>
     async function submitForm(event) {
@@ -23,10 +23,27 @@
 
 </head>
 <body>
+    <!-- Mind Flayer Background -->
+    <div class="mind-flayer-background" id="mind-flayer"></div>
+    <div class="mind-flayer-glow" id="mind-flayer-glow"></div>
+
+    <!-- Container de Raios Realistas do Upside Down -->
+    <div class="lightning-container" id="lightning-container"></div>
+
+    <!-- Flash de tela -->
+    <div class="screen-flash" id="screen-flash"></div>
+
+    <!-- Brilho ambiente -->
+    <div class="ambient-glow"></div>
+
+    <script src="/web/html/background.js"></script>
+
+
+
     <div class="search-container">
         <form onsubmit="submitForm(event)" class="search-form">
             <button type="button" class="index-button" onclick="window.location.href='/'">
-                <img src="/web/html/images/logo.png" alt="Inicial Page" width="50" height="50" id="logo-img">
+                <img src="/web/html/images/logo.jpg" alt="Inicial Page" width="50" height="50" id="logo-img">
             </button>
             <input type="text" name="input" class="search-box" placeholder="Pesquisar Palavras">
 
@@ -97,79 +114,93 @@
         </div>
     {% endif %}
 
-    <!-- Adicionando a opção de análise com openai-->
-    <div class="analysis-container"  style="display: flex; flex-direction: row; align-items: center; justify-content: left; text-align: center;
-        margin-bottom: 100px; margin-left: 430px; margin-top: 50px;">
+    <!-- Adicionando a opção de análise contextualizada e hackernews-->
+    <div class="analysis-container">
         <button type="button" onclick="generateAnalysis()" class="analysis-button">Generate Analysis</button>
         <div id="analysis-result" class="analysis-result hidden"></div> <!-- Exibe o resultado da análise -->
-        <button type="button" class="search-button" onclick=hackernews()>HackerNews Indexing</button>
+        <button type="button" class="search-button" id="hackernews-button" onclick="hackernews()">HackerNews Indexing</button>
     </div>
 
   
 
 
-    <!-- Função para gerar a analise asincrona -->
+    <!-- Função para gerar a analise contextualizada -->
     <script>
-        /**
-         * Função para gerar a análise usando Mistralai
-         * @async
-         * @function generateAnalysis
-         * @returns {Promise<void>} - Retorna uma Promise que resolve quando a análise é gerada.
-         * @throws {Error} - Lança um erro se a solicitação falhar.
-         * @description Esta função coleta os termos de pesquisa e os snippets, envia uma solicitação POST para o servidor e exibe a análise gerada.
-         * */
+       // Função para gerar a analise contextualizada (com coleta de snippets)
         async function generateAnalysis() {
-            const analysisResult = document.getElementById('analysis-result');
-            analysisResult.classList.remove('hidden'); // Torna o elemento visível
+            const analysisButton = document.querySelector('.analysis-button');
+            const analysisResultDiv = document.getElementById('analysis-result');
+            
+            const query = "{{ query }}"; 
+            const searchTerms = query.split(/\s+/).filter(term => term.length > 0); // Termos de pesquisa
 
-            const searchTerms = "{{ query }}"; // Termos da pesquisa
-            const snippets = Array.from(document.querySelectorAll(".result-space p")).map(p => {
-                return {
-                    url: p.getAttribute("data-url"),
-                    title: p.getAttribute("data-title"),
-                    citation: p.getAttribute("data-citation")
-                };
+            // 1. Coletar os Snippets
+            const resultItems = document.querySelectorAll('.snippet-data');
+            const snippets = [];
+
+            resultItems.forEach(item => {
+                // Extrai dados dos atributos (data-url, data-title, data-citation)
+                snippets.push({
+                    url: item.getAttribute('data-url'),
+                    title: item.getAttribute('data-title'),
+                    citation: item.getAttribute('data-citation')
+                });
             });
 
+            if (snippets.length === 0) {
+                alert("Não há resultados na página para analisar. Faça uma pesquisa primeiro.");
+                return;
+            }
+            
+            if (searchTerms.length === 0) {
+                alert("A query de pesquisa está vazia. Não é possível gerar a análise.");
+                return;
+            }
 
+            // 2. Feedback visual e desativação do botão
+            analysisButton.disabled = true;
+            analysisButton.textContent = "A Analisar... Por favor, aguarde.";
+            analysisResultDiv.classList.remove('hidden');
+            analysisResultDiv.textContent = "A gerar análise contextualizada pela IA...";
+
+            // 3. Enviar Requisição POST para o FastAPI
             try {
-                const response = await fetch('/generate-analysis', {
+                const response = await fetch('/geminiAPI', { // Usando /geminiAPI conforme o seu último endpoint
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ search_terms: [searchTerms], snippets: snippets }),
+                    body: JSON.stringify({ 
+                        search_queries: searchTerms, // Envia a lista de termos
+                        snippets: snippets           // Envia a lista de snippets (objetos)
+                    })
                 });
+
+                analysisButton.disabled = false;
+                analysisButton.textContent = "Generate Analysis";
 
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.analysis) {
-                        document.getElementById('analysis-result').textContent = data.analysis;
-                    } else {
-                        document.getElementById('analysis-result').textContent = "Erro ao gerar análise.";
-                    }
+                    analysisResultDiv.innerHTML = `<h3>🧠 Análise Contextual (IA)</h3><pre>${data.analysis}</pre>`;
                 } else {
-                    console.error('Erro na solicitação:', response.statusText);
+                    const error = await response.json();
+                    analysisResultDiv.textContent = `Erro ${response.status_code}: ${error.error || "Falha ao gerar a análise."}`;
                 }
             } catch (error) {
-                console.error('Erro:', error);
+                analysisButton.disabled = false;
+                analysisButton.textContent = "Generate Analysis";
+                analysisResultDiv.textContent = "Erro de rede ao contactar o servidor de análise: " + error;
             }
         }
-
-        /**
-         * Função para indexar histórias do Hacker News
-         * @async
-         * @function indexing_hn
-         * @returns {Promise<void>} - Retorna uma Promise que resolve quando a indexação é concluída.
-         * @throws {Error} - Lança um erro se a solicitação falhar.
-         * @description Esta função envia uma solicitação POST para o servidor para indexar histórias do Hacker News.
-         */
+       
         async function hackernews(){
+            const hackernewsButton = document.getElementById('hackernews-button');
+            hackernewsButton.disabled = true;
+
             // Obtém a query da pesquisa atual (renderizada pelo Jinja2)
             const query = "{{ query }}";
 
             try {
-                console.log("TRALALERO");
                 const response = await fetch('/hackernews/user-stories', {
                     method: 'POST',
                     headers: {
@@ -181,7 +212,7 @@
                 if (response.ok) {
                     const data = await response.json(); // ADICIONE ESTA LINHA - Parse do JSON
                     if (data.num_indexed == 0){
-                        alert("No new stories were indexed from Hacker News.");
+                        alert("Nenhuma nova story foi indexada do Hacker News.");
                         
                     }
                     else{
@@ -190,8 +221,10 @@
                 } else {
                     alert("Erro ao indexar stories do Hacker News.");
                 }
+                hackernewsButton.disabled = false;
             } catch (error) {
                 alert("Erro de rede ao indexar: " + error);
+                hackernewsButton.disabled = false;
             }
         }
     </script>
