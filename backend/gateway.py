@@ -306,7 +306,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
         return index_pb2.BacklinksResponse(backlinks=list(all_backlinks))
 
 
-    def putNew(self, request, context, max_retries=5):
+    def putNew(self, request, context):
         """
         Método putNew:
             - Recebe um pedido do cliente para adicionar um novo URL à fila de URLs a visitar.
@@ -315,7 +315,7 @@ class Gateway(index_pb2_grpc.GatewayServicer, index_pb2_grpc.StorageBarrelServic
 
         available_barrels = self.available_barrels()    
 
-        for attempt in range(max_retries):
+        for attempt in range(MAX_RETRIES):
             stub = random.choice(available_barrels) # escolhe um Barrel aleatoriamente
             
             try:

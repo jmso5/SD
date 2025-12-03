@@ -75,6 +75,7 @@ h1{
     box-shadow: 0 4px 10px rgba(0,0,0,0.12);
     background: transparent;
     cursor: pointer;
+    margin-right: 10px;
 }
 
 /* Faz a <img> preencher o botão e cortar para caber no círculo */
@@ -135,6 +136,8 @@ h1{
 .next-button:hover {
     background-color: #4c0606;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    animation: shake 0.5s ease;
+
 }
 
 .disabled {
@@ -166,7 +169,6 @@ h1{
     color: white;
     background-color: #6f0606;
     padding: 0 24px;
-    font-size: 16px;
     border: none;
     border-radius: 25px;
     cursor: pointer;
@@ -202,62 +204,12 @@ h1{
     animation: shake 0.5s ease;
 }
 
-.analysis-button {
-    background-color: #fce092; /* Cor de fundo verde */
-    color: #000000; /* Cor do texto */
-    border: none; /* Remove a borda */
-    border-radius: 8px; /* Bordas arredondadas */
-    padding: 10px 20px; /* Espaçamento interno */
-    font-size: 16px; /* Tamanho da fonte */
-    cursor: pointer; /* Mostra o cursor de clique */
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Sombra */
-    transition: background-color 0.3s ease, box-shadow 0.3s ease; /* Transições suaves */
-    margin-left: 20px; /* espaço entre o botão e o canto da pagina*/
-}
-
-.analysis-button:hover {
-    background-color: rgb(234, 212, 97); /* Cor de fundo ao passar o mouse */
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2); /* Sombra ao passar o mouse */
-}
-
-.analysis-button:active {
-    background-color: #ead461; /* Cor de fundo ao clicar */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Sombra ao clicar */
-    transform: translateY(2px); /* Efeito de clique */
-}
-
-.analysis-container{
-    display: flex; 
-    flex-direction: row; 
-    align-items: center; 
-    justify-content: left; 
-    text-align: center;
-    margin-bottom: 100px; 
-    margin-left: 430px; 
-    margin-top: 50px;
-}
-
-.analysis-result {
-    margin-top: 20px;
-    padding: 20px;
-    background-color: #fff8e1; /* Fundo claro */
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    font-size: 1.1em;
-    color: #333;
-    min-height: 100px; /* Altura mínima */
-    overflow-y: auto; /* Scroll caso o conteúdo seja grande */
-    max-height: 300px; /* Altura máxima */
-    margin-left: 20px;
-    margin-right: 20px;
-}
-
 .hidden {
     display: none;
 }
 
 
-/* Caixa azul exterior dos resultados */
+/* Caixa vermelha exterior dos resultados */
 .result-outer {
     background: #6f0606;
     max-width: 1100px;
@@ -307,6 +259,444 @@ h1{
 .result-item:nth-child(8) { animation-delay: 1.8s; }
 .result-item:nth-child(9) { animation-delay: 2s; }
 .result-item:nth-child(10) { animation-delay: 2.2s; }
+
+
+.analysis-container {
+    max-width: 1000px;
+    margin: 30px auto 40px auto;
+    padding: 0 20px;
+}
+
+.analysis-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px);
+    border: 2px solid rgba(111, 6, 6, 0.3);
+    border-radius: 16px;
+    padding: 25px 30px;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(111, 6, 6, 0.2);
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.analysis-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(111, 6, 6, 0.3);
+}
+
+.analysis-icon {
+    font-size: 32px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.analysis-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #ff6666;
+    text-shadow: 0 0 10px rgba(255, 102, 102, 0.5);
+    flex: 1;
+}
+
+.loading-spinner {
+    font-size: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.analysis-content {
+    color: #e0e0e0;
+    font-size: 16px;
+    line-height: 1.8;
+    min-height: 60px;
+}
+
+.analysis-text {
+    padding: 10px 0;
+}
+
+.analysis-text p {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.loading-text {
+    color: #cccccc;
+    font-style: italic;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.error-text {
+    color: #ff6666;
+    font-weight: 600;
+    text-align: center;
+    padding: 20px 0;
+}
+
+
+/* ===== HACKERNEWS SECTION ===== */
+.hackernews-section {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.hackernews-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px);
+    /* Borda e sombra alteradas para Vermelho Intenso */
+    border: 2px solid rgba(111, 6, 6, 0.5); /* #6f0606 com opacidade */
+    border-radius: 16px;
+    padding: 0;
+    overflow: hidden;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(111, 6, 6, 0.4); /* Sombra intensa de #6f0606 */
+    transition: all 0.3s ease;
+    animation: slideIn 0.6s ease-out 0.2s backwards;
+}
+
+.hackernews-card:hover {
+    border-color: rgba(111, 6, 6, 0.8);
+    box-shadow: 
+        0 12px 40px rgba(0, 0, 0, 0.4),
+        0 0 30px rgba(111, 6, 6, 0.6);
+    transform: translateY(-2px);
+}
+
+/* Header */
+.hackernews-header {
+    /* Fundo gradiente alterado para tons de Vermelho Intenso */
+    background: linear-gradient(135deg, rgba(172, 5, 14, 0.2), rgba(102, 4, 9, 0.05)); /* Tons de vermelho escuro */
+    padding: 25px 30px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    /* Borda inferior alterada para Vermelho Intenso */
+    border-bottom: 1px solid rgba(111, 6, 6, 0.3);
+}
+
+.hn-logo {
+    width: 50px;
+    height: 50px;
+    /* Cor de fundo alterada para um vermelho forte */
+    background: #e50914; /* Vermelho mais próximo do logo da Netflix/YouTube */
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Sombra alterada para Vermelho Forte */
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.6);
+    transition: transform 0.3s ease;
+}
+
+.hackernews-card:hover .hn-logo {
+    transform: rotate(5deg) scale(1.05);
+}
+
+.hn-y {
+    font-family: 'Verdana', sans-serif;
+    font-size: 32px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.hn-title-container {
+    flex: 1;
+}
+
+.hn-title {
+    margin: 0 0 5px 0;
+    font-size: 24px;
+    font-weight: 700;
+    /* Cor do título alterada para um vermelho claro/vivo */
+    color: #ff6666; 
+    /* Sombra alterada para Vermelho Claro/Vivo */
+    text-shadow: 0 0 10px rgba(255, 102, 102, 0.5);
+}
+
+.hn-subtitle {
+    margin: 0;
+    font-size: 14px;
+    color: #cccccc;
+    opacity: 0.9;
+}
+
+/* Content */
+.hn-content {
+    padding: 30px;
+}
+
+.hn-info {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    /* Borda esquerda alterada para um vermelho forte */
+    border-left: 3px solid #e50914; 
+    transition: all 0.3s ease;
+}
+
+.info-item:hover {
+    /* Cor de fundo hover alterada para um vermelho mais escuro com opacidade */
+    background: rgba(111, 6, 6, 0.2); 
+    transform: translateX(5px);
+}
+
+.info-icon {
+    font-size: 24px;
+    min-width: 24px;
+}
+
+.info-text {
+    color: #e0e0e0;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.info-text strong {
+    /* Cor de texto alterada para um vermelho claro/vivo */
+    color: #ff6666; 
+    font-weight: 600;
+}
+
+/* Action Button */
+/* Mantido em tons de vermelho, ajustado para ser mais consistente com os novos vermelhos */
+.hn-action-button {
+    width: 100%;
+    padding: 18px 30px;
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, #e50914, #ac050e, #660409);
+    border: 2px solid rgba(229, 9, 20, 0.5);
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-shadow: 0 6px 20px rgba(229, 9, 20, 0.4); /* Sombra ajustada */
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.hn-action-button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.hn-action-button:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.hn-action-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #79070c, #75060a, #450206);
+    box-shadow: 0 8px 30px rgba(121, 7, 12, 0.6); /* Sombra ajustada */
+    transform: translateY(-2px);
+    border-color: rgba(121, 6, 12, 0.8);
+}
+
+.hn-action-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.hn-action-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: linear-gradient(135deg, #e50914, #72050b);
+}
+
+.button-icon {
+    font-size: 24px;
+    z-index: 1;
+    transition: transform 0.3s ease;
+}
+
+.hn-action-button:hover .button-icon {
+    transform: scale(1.2) rotate(10deg);
+}
+
+.button-text {
+    z-index: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.hn-action-button.loading .button-icon {
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+/* Result Section */
+.hn-result {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    /* Borda alterada para um vermelho mais escuro com opacidade */
+    border: 2px solid rgba(111, 6, 6, 0.5); 
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    animation: slideInResult 0.5s ease-out;
+}
+
+.hn-result.error {
+    border-color: rgba(244, 67, 54, 0.3);
+    background: rgba(244, 67, 54, 0.05);
+}
+
+@keyframes slideInResult {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.result-icon {
+    font-size: 32px;
+    animation: popIn 0.5s ease-out;
+}
+
+@keyframes popIn {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.result-text {
+    flex: 1;
+    color: #e0e0e0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* Progress Bar */
+.hn-progress-bar {
+    height: 4px;
+    background: rgba(229, 9, 20, 0.1);
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    /* Gradiente alterado para tons de vermelho forte */
+    background: linear-gradient(90deg, #e50914, #ac050e, #660409); 
+    width: 0%;
+    transition: width 0.3s ease;
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: 200px 0; }
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .hackernews-header {
+        flex-direction: column;
+        text-align: center;
+        padding: 20px;
+    }
+    
+    .hn-content {
+        padding: 20px;
+    }
+    
+    .hn-action-button {
+        font-size: 16px;
+        padding: 15px 20px;
+    }
+    
+    .hn-title {
+        font-size: 20px;
+    }
+    
+    .info-text {
+        font-size: 14px;
+    }
+}
+
+/* Animação de particles ao clicar */
+@keyframes particle {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--tx), var(--ty)) scale(0);
+        opacity: 0;
+    }
+}
+
+.particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #e50914;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: particle 1s ease-out forwards;
+}
 
 @keyframes spin {
     from {

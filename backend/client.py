@@ -153,7 +153,7 @@ class Client:
             }
 
         except grpc.RpcError as e:
-            print(f"[Client] Erro ao obter estatísticas do Gateway: {e}")
+            #print(f"[Client] Erro ao obter estatísticas do Gateway: {e}")
             # Retornar estrutura vazia previsível para o websocket não falhar
             return {"top_searches": [], "barrel_stats": []}
         

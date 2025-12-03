@@ -56,16 +56,30 @@
     {% if search_results %}
         <h1>Resultados de Pesquisa</h1>
 
-        <!-- 🔵 CAIXA AZUL (EXTERIOR) -->
+        <!--  CAIXA Vermelha (EXTERIOR) -->
         <div class="result-outer">
 
-            <!-- ⚪ CAIXA BRANCA (INTERIOR) -->
+            <div class="analysis-container" id="analysis-container">
+                <div class="analysis-card">
+                    <div class="analysis-header">
+                        <span class="analysis-icon">🧠</span>
+                        <h2>Análise Contextualizada com IA</h2>
+                        <span class="loading-spinner" id="loading-spinner">⏳</span>
+                    </div>
+                    <div class="analysis-content" id="analysis-result">
+                        <p class="loading-text">Gerando análise contextualizada... Por favor, aguarde.</p>
+                    </div>
+                </div>
+            </div>
+
+
+            <!--  CAIXA BRANCA (INTERIOR) -->
             <div class="result-inner">
 
                 {% for result in search_results %}
                 <div class="result-item">
 
-                    <p data-url="{{ result.url }}" data-title="{{ result.title }}" data-citation="{{ result.citation }}">
+                    <p class="snipped-data" data-url="{{ result.url }}" data-title="{{ result.title }}" data-citation="{{ result.citation }}">
                         <strong>Título:</strong> {{ result.title }}<br>
                         <strong>URL:</strong> <a href="{{ result.url }}" target="_blank">{{ result.url }}</a><br>
                         <strong>Citação:</strong> {{ result.text }}
@@ -84,6 +98,52 @@
             </div>
         </div>
 
+        <!-- Adicionando a opção de hackernews-->
+        <!-- ===== HACKERNEWS INDEXING SECTION ===== -->
+        <div class="hackernews-section" id="hackernews-section">
+            <div class="hackernews-card">
+                <div class="hackernews-header">
+                    <div class="hn-logo">
+                        <span class="hn-y">Y</span>
+                    </div>
+                    <div class="hn-title-container">
+                        <h3 class="hn-title">HackerNews Indexing</h3>
+                        <p class="hn-subtitle">Indexar stories relevantes do HackerNews baseadas na sua pesquisa</p>
+                    </div>
+                </div>
+                
+                <div class="hn-content">
+                    <div class="hn-info">
+                        <div class="info-item">
+                            <span class="info-icon">🔍</span>
+                            <span class="info-text">Pesquisa atual: <strong>"{{ query }}"</strong></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-icon">📊</span>
+                            <span class="info-text">Procura nas top 20 stories do HackerNews</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-icon">⚡</span>
+                            <span class="info-text">Indexação automática de URLs relevantes</span>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="hn-action-button" id="hackernews-button" onclick="hackernews()">
+                        <span class="button-icon" id="hn-button-icon">🚀</span>
+                        <span class="button-text" id="hn-button-text">Iniciar Indexação</span>
+                    </button>
+                    
+                    <div class="hn-result hidden" id="hn-result">
+                        <div class="result-icon" id="result-icon">✅</div>
+                        <div class="result-text" id="result-text"></div>
+                    </div>
+                </div>
+                
+                <div class="hn-progress-bar hidden" id="hn-progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+        </div>
 
         
         {% set total_pages = (total_results // results_per_page) + (1 if total_results % results_per_page else 0) %}
@@ -114,14 +174,6 @@
         </div>
     {% endif %}
 
-    <!-- Adicionando a opção de análise contextualizada e hackernews-->
-    <div class="analysis-container">
-        <button type="button" onclick="generateAnalysis()" class="analysis-button">Generate Analysis</button>
-        <div id="analysis-result" class="analysis-result hidden"></div> <!-- Exibe o resultado da análise -->
-        <button type="button" class="search-button" id="hackernews-button" onclick="hackernews()">HackerNews Indexing</button>
-    </div>
-
-  
 
 
     <!-- Função para gerar a analise contextualizada -->
@@ -135,7 +187,7 @@
             const searchTerms = query.split(/\s+/).filter(term => term.length > 0); // Termos de pesquisa
 
             // 1. Coletar os Snippets
-            const resultItems = document.querySelectorAll('.snippet-data');
+            const resultItems = document.querySelectorAll('.snipped-data');
             const snippets = [];
 
             resultItems.forEach(item => {
@@ -192,12 +244,35 @@
                 analysisResultDiv.textContent = "Erro de rede ao contactar o servidor de análise: " + error;
             }
         }
+
+
        
         async function hackernews(){
             const hackernewsButton = document.getElementById('hackernews-button');
-            hackernewsButton.disabled = true;
+            const buttonIcon = document.getElementById('hn-button-icon');
+            const buttonText = document.getElementById('hn-button-text');
+            const resultDiv = document.getElementById('hn-result');
+            const resultIcon = document.getElementById('result-icon');
+            const resultText = document.getElementById('result-text');
+            const progressBar = document.getElementById('hn-progress-bar');
+            const progressFill = document.getElementById('progress-fill');
 
-            // Obtém a query da pesquisa atual (renderizada pelo Jinja2)
+            // Criar efeito de partículas ao clicar
+            createParticles(hackernewsButton);
+
+            // Desabilitar botão e mostrar loading
+            hackernewsButton.disabled = true;
+            hackernewsButton.classList.add('loading');
+            buttonIcon.textContent = '⏳';
+            buttonText.textContent = 'Indexando...';
+            
+            // Esconder resultado anterior
+            resultDiv.classList.add('hidden');
+            
+            // Mostrar barra de progresso
+            progressBar.classList.remove('hidden');
+            animateProgress(progressFill);
+
             const query = "{{ query }}";
 
             try {
@@ -206,25 +281,115 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ query: query }) // envia a query no corpo do pedido
+                    body: JSON.stringify({ query: query })
                 });
 
-                if (response.ok) {
-                    const data = await response.json(); // ADICIONE ESTA LINHA - Parse do JSON
-                    if (data.num_indexed == 0){
-                        alert("Nenhuma nova story foi indexada do Hacker News.");
+                // Parar animação de progresso
+                progressFill.style.width = '100%';
+
+                setTimeout(() => {
+                    progressBar.classList.add('hidden');
+                    resultDiv.classList.remove('hidden');
+                    
+                    
+                    if (response.ok) {
+                        const data = response.json();
                         
+                        if (data.num_indexed == 0){
+                            resultDiv.classList.add('error');
+                            resultIcon.textContent = '⚠️';
+                            resultText.innerHTML = `
+                                <strong>Nenhuma story encontrada</strong><br>
+                                <span style="font-size: 14px; opacity: 0.8;">
+                                    Não foram encontradas stories no HackerNews que correspondam aos termos de pesquisa.
+                                </span>
+                            `;
+                        } else {
+                            resultDiv.classList.remove('error');
+                            resultIcon.textContent = '✅';
+                            resultText.innerHTML = `
+                                <strong>Indexação concluída com sucesso!</strong><br>
+                                <span style="font-size: 14px; opacity: 0.8;">
+                                    ${data.num_indexed} ${data.num_indexed === 1 ? 'story foi indexada' : 'stories foram indexadas'} do HackerNews.
+                                </span>
+                            `;
+                            
+                            // Efeito de confetti
+                            if (window.createConfetti) {
+                                const rect = hackernewsButton.getBoundingClientRect();
+                                createConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                            }
+                        }
+                    } else {
+                        resultDiv.classList.add('error');
+                        resultIcon.textContent = '❌';
+                        resultText.innerHTML = `
+                            <strong>Erro ao indexar</strong><br>
+                            <span style="font-size: 14px; opacity: 0.8;">
+                                Não foi possível conectar ao HackerNews. Tente novamente mais tarde.
+                            </span>
+                        `;
                     }
-                    else{
-                        alert('Foram indexadas ' + data.num_indexed + ' novas stories do Hacker News.');
-                    }
-                } else {
-                    alert("Erro ao indexar stories do Hacker News.");
-                }
-                hackernewsButton.disabled = false;
+                }, 500);
+
             } catch (error) {
-                alert("Erro de rede ao indexar: " + error);
-                hackernewsButton.disabled = false;
+                progressBar.classList.add('hidden');
+                resultDiv.classList.remove('hidden');
+                resultDiv.classList.add('error');
+                resultIcon.textContent = '❌';
+                resultText.innerHTML = `
+                    <strong>Erro de rede</strong><br>
+                    <span style="font-size: 14px; opacity: 0.8;">
+                        ${error.message}
+                    </span>
+                `;
+            } finally {
+                // Restaurar botão
+                setTimeout(() => {
+                    hackernewsButton.disabled = false;
+                    hackernewsButton.classList.remove('loading');
+                    buttonIcon.textContent = '🚀';
+                    buttonText.textContent = 'Iniciar Indexação';
+                }, 1000);
+            }
+        }
+
+        // Função para animar barra de progresso
+        function animateProgress(progressFill) {
+            let width = 0;
+            const interval = setInterval(() => {
+                if (width >= 90) {
+                    clearInterval(interval);
+                } else {
+                    width += Math.random() * 10;
+                    progressFill.style.width = Math.min(width, 90) + '%';
+                }
+            }, 300);
+        }
+
+        // Função para criar partículas ao clicar
+        function createParticles(button) {
+            const rect = button.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            for (let i = 0; i < 12; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                const angle = (Math.PI * 2 * i) / 12;
+                const distance = 50 + Math.random() * 50;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+                
+                particle.style.left = centerX + 'px';
+                particle.style.top = centerY + 'px';
+                particle.style.setProperty('--tx', tx + 'px');
+                particle.style.setProperty('--ty', ty + 'px');
+                
+                document.body.appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 1000);
             }
         }
     </script>

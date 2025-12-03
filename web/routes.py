@@ -15,9 +15,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
-from fastapi import Body, WebSocket, WebSocketDisconnect
+from fastapi import Body, WebSocket, WebSocketDisconnect, BackgroundTasks
 from google import genai
 import asyncio
+
 
 # Adiciona a diretoria 'pai' (backend) ao sys.path para encontrar o client.py
 current_dir = os.path.dirname(os.path.abspath(__file__)) # pasta web
@@ -68,8 +69,11 @@ async def index_url(url: str = Form(...)):
     gateway_ip = config['gateway']['ip']
     gateway_port = config['gateway']['port']
     
-    client_instance = client.Client(gateway_ip, gateway_port)
-    client_instance.submit_url(url)
+    try:
+        client_instance = client.Client(gateway_ip, gateway_port)
+        client_instance.submit_url(url)
+    except Exception as e:
+        return {"message": "Não foi possível realizar a indexação. Por favor, tente novamente mais tarde."}
 
     
     return {"message": f"URL {url} adicionado para indexação."}
@@ -110,8 +114,11 @@ async def search_word(request: Request, query: str = "", page: int = 1):
     gate_port = config['gateway']['port']
     client_instance = client.Client(gate_ip, gate_port)
     
-
-    results = client_instance.search(query)
+    try:
+        results = client_instance.search(query)
+    except Exception as e:
+        results = None
+        print("Não foi possível realizar a pesquisa neste momento.")
 
     error_message = None
 
@@ -177,7 +184,11 @@ async def get_backlinks(request: Request, url: str = "", page: int = 1, query: s
     gate_port = config['gateway']['port']
     client_instance = client.Client(gate_ip, gate_port)
 
-    raw_backlinks = client_instance.search_backlinks(url)
+    try:
+        raw_backlinks = client_instance.search_backlinks(url)
+    except Exception as e:
+        raw_backlinks = []
+        print("Não foi possível obter os backlinks neste momento.")
 
     backlinks = [{"url": link} for link in raw_backlinks]
 
@@ -203,6 +214,7 @@ async def get_backlinks(request: Request, url: str = "", page: int = 1, query: s
             "query": query
         }
     )
+
 
 
 # Rota para integração com a API do Hacker News para histórias do usuário
@@ -265,6 +277,8 @@ async def hacker_news_user_stories(querys_hn: dict = Body(...)):
         "num_indexed": num_indexed,
     }
 
+
+
 @router.post("/geminiAPI")
 async def generate_analysis(data: dict = Body(...)):
   
@@ -276,9 +290,9 @@ async def generate_analysis(data: dict = Body(...)):
     snippets = data.get("snippets", [])
     
     # Construir o prompt para a API
-    prompt = f"""Baseado nos seguintes termos de pesquisa e resultados, gere uma análise contextualizada e informativa.
-    Termos de pesquisa: {', '.join(search_queries)} 
-    Resultados obtidos:"""
+    prompt = (f"Baseado nos seguintes termos de pesquisa e resultados, gere uma análise contextualizada e informativa.\n"
+        f"Termos de pesquisa: {', '.join(search_queries)}\n" 
+        "Resultados obtidos: \n")
     
     for i, snippet in enumerate(snippets, 1):
         title = snippet.get("title", "Sem título")
@@ -286,32 +300,25 @@ async def generate_analysis(data: dict = Body(...)):
         url = snippet.get("url", "")
         prompt += f"\n{i}. {title}\n   URL: {url}\n   Citação: {citation}\n"
     
-    prompt += """\n\nPor favor, forneça uma análise que:
-    1. Resuma os principais tópicos encontrados
-    2. Identifique padrões ou temas comuns
-    3. Destaque informações relevantes e úteis
-    4. Seja concisa e objetiva (máximo 300 palavras)"""
+    prompt += ("Por favor, forneça uma análise que:\n"
+        "1. Resuma os principais tópicos\n"
+        "2. Identifique padrões comuns\n"
+        "3. Destaque informações úteis\n"
+        "4. Seja concisa e objetiva (máx 300 palavras)")
     
-    
+    # cliente gemini
     client_genai = genai.Client(api_key=api_key)
-
+    
     response = client_genai.models.generate_content(
-        model="gemini-2.5-pro",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        max_output_tokens=500,
-        temperature=0.7,
+        model="gemini-2.5-flash",
+        contents=prompt
     )
 
-
-
-
-    analysis = response.choices[0].message.content.strip()
-
     return {
-        "analysis": analysis
+        "analysis": response.text
     }
+
+
 
 @router.websocket("/ws/stats")
 async def websocket_endpoint(websocket: WebSocket):
@@ -344,15 +351,36 @@ async def websocket_endpoint(websocket: WebSocket):
         print("WebSocket desconectado")
     except Exception as e:
         print(f"Erro no WebSocket: {str(e)}")
-    
 
 def load_config():
     """
     - Função para carregar as configurações dos ips e portas para o gateway a partir de um ficheiro JSON.
     """
-    with open('../backend/config.json', 'r') as f:
+    with open('../backend/config.json', 'r', encoding='utf-8') as f:
         config = json.load(f)
     return config
+
+
+@router.get("/offline", response_class=HTMLResponse)
+async def offline_page():
+    """
+    Rota para servir uma página offline estática.
+    Utilizada quando o servidor FastAPI está fora de funcionamento.
+    """
+    web_dir = "path/to/web/directory"  # Define the path to the web directory
+    try:
+        with open(os.path.join(web_dir, "html", "offline.html"), "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except Exception as e:
+        return HTMLResponse(content="<h1>Offline - Servidor Indisponível</h1><p>Por favor, tente novamente mais tarde.</p>")
+
+@router.get("/api/health")
+async def health_check():
+    """
+    Endpoint para verificar se o servidor está online.
+    Utilizado pelo service worker para detectar o status da conexão.
+    """
+    return JSONResponse(content={"status": "online"})
 
 
 
