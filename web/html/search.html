@@ -180,7 +180,6 @@
     <script>
        // Função para gerar a analise contextualizada (com coleta de snippets)
         async function generateAnalysis() {
-            const analysisButton = document.querySelector('.analysis-button');
             const analysisResultDiv = document.getElementById('analysis-result');
             
             const query = "{{ query }}"; 
@@ -210,8 +209,6 @@
             }
 
             // 2. Feedback visual e desativação do botão
-            analysisButton.disabled = true;
-            analysisButton.textContent = "A Analisar... Por favor, aguarde.";
             analysisResultDiv.classList.remove('hidden');
             analysisResultDiv.textContent = "A gerar análise contextualizada pela IA...";
 
@@ -227,9 +224,7 @@
                         snippets: snippets           // Envia a lista de snippets (objetos)
                     })
                 });
-
-                analysisButton.disabled = false;
-                analysisButton.textContent = "Generate Analysis";
+                
 
                 if (response.ok) {
                     const data = await response.json();
@@ -392,6 +387,14 @@
                 setTimeout(() => particle.remove(), 1000);
             }
         }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // Verifica se os resultados de pesquisa existem na página renderizada
+            const resultContainer = document.querySelector('.result-outer');
+            if (resultContainer) {
+                generateAnalysis(); // Chama a função para iniciar a análise
+            }
+        });
     </script>
 
     <script src="/web/html/confetti.js"></script>

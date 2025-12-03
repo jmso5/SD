@@ -335,6 +335,14 @@ h1{
     min-height: 60px;
 }
 
+.analysis-content pre {
+    white-space: pre-wrap;
+    word-wrap: break-word; 
+    margin: 0;
+    padding: 10px 0;
+    font-family: inherit; 
+}
+
 .analysis-text {
     padding: 10px 0;
 }
