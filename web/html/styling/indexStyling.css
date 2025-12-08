@@ -3,7 +3,8 @@ body {
     font-family: 'Quicksand', sans-serif;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
+    padding-top: 60px;  
     align-items: center;
     min-height: 120vh;
     margin: 0;

@@ -1,7 +1,14 @@
 """
-Este ficheiro guarda as rotas para a interface web do cliente.
-Utiliza o framework FastAPI e o motor de templates Jinja2 para gerir o fluxo da aplicação, 
-incluindo a pesquisa, indexação de URLs e monitorização do servidor.
+Módulo responsável por definir as rotas da interface web do cliente.
+
+Este ficheiro usa FastAPI em conjunto com templates Jinja2 para gerir:
+- A página inicial e interface de pesquisa
+- Submissão e indexação manual de URLs
+- Sistema de paginação de resultados
+- Obtenção de backlinks
+- Integração com a API pública do Hacker News
+- Geração de análises através da API Gemini
+- Endpoint WebSocket para estatísticas em tempo real do gateway
 """
 import json
 import os
@@ -45,11 +52,12 @@ pageNum = 1  # Página atual
 @router.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """
-    Rota para a página inicial.
-    :param request: Objeto de solicitação.
-    :return: Resposta HTML para a página inicial.
+    Rota que renderiza a página inicial da interface web.
 
-    Esta rota renderiza a página inicial da interface web.
+    Args: 
+        request (Request): Objeto de requisição FastAPI.
+    Returns: 
+        TemplateResponse: Resposta HTML renderizada com o template "index.html".
     """
     return templates.TemplateResponse("index.html", {"request": request})
 
@@ -57,11 +65,13 @@ async def read_root(request: Request):
 @router.post("/index_url")
 async def index_url(url: str = Form(...)):
     """
-    Rota para indexar um URL manualmente através da interface web.
-    Lógica: conectar-se ao Gateway e chama a função submit_url do cliente para enviar o URL para indexação.
+    Rota para indexar manualmente um URL no sistema através da gateway.
+    É criada uma instância do cliente que se conecta ao gateway e envia o URL para indexação.
 
-    :param url: URL a ser indexado.
-    :return: Mensagem de sucesso.
+    Args:
+        url (str): URL a ser indexado.
+    Returns:
+        dict: Mensagem de sucesso ou erro.
     """
 
 
@@ -83,25 +93,16 @@ async def index_url(url: str = Form(...)):
 @router.get("/search_word", response_class=JSONResponse)
 async def search_word(request: Request, query: str = "", page: int = 1):
     """
-    Rota para realizar buscas por palavras.
+    Rota para executar uma pesquisa no sistema de indexação e devolve os resultados paginados.
+    É criada uma instância do cliente que se conecta ao gateway e realiza a pesquisa.
+    É verificada a existência de resultados antes de calcular a paginação para evitar erros.
 
-    Lógica: 
-    1. Carrega a configuração do cliente para obter o IP e a porta do gateway.
-    2. Conecta-se ao gateway.
-    3. Chama a função search_word ou search_words do cliente, dependendo se é uma ou mais palavras.
-    4. Implementa paginação  nos resultados, mostrando um número fixo de resultados por página (10 neste caso).
-    5. Renderiza os resultados na página HTML.
-
-    :param request: Objeto de solicitação.
-    :param query: Palavra(s)-chave a ser(em) pesquisada(s).
-    :param page: Número da página atual.
-    :return: Resposta HTML com os resultados da pesquisa.
-
-    Esta rota recebe uma consulta de pesquisa e retorna os resultados correspondentes.
-    Os resultados são paginados, com um número fixo de resultados por página, 10 no caso.
-    A função também carrega a configuração do cliente, conecta-se ao gateway e chama a função search_word ou search_words,
-    dependendo se é uma ou se são mais palavras ao mesmo tempo a serem pesquisadas.
-    Os resultados são então renderizados na página HTML.
+    Args:
+        request (Request): Objeto de requisição FastAPI.
+        query (str): Termo de pesquisa.
+        page (int): Número da página de resultados a ser exibida.
+    Returns:
+        TemplateResponse: Resposta HTML renderizada com o template "search.html" contendo os resultados da pesquisa.
     """
   
     global pageNum, jump
@@ -158,23 +159,19 @@ async def search_word(request: Request, query: str = "", page: int = 1):
 @router.get("/get_backlinks", response_class=HTMLResponse)
 async def get_backlinks(request: Request, url: str = "", page: int = 1, query: str = "", search_page: int = 1):
     """
-    Rota para obter backlinks de um URL específico.
+    Rota que obtem os backlinks de um URL específico e apresenta-os com paginação.
 
-    Lógica:
-    1. Carrega a configuração do cliente para obter o IP e a porta do gateway.
-    2. Conecta-se ao gateway.
-    3. Chama a função get_backlinks do cliente para obter os backlinks do URL fornecido.
-    4. Implementa paginação nos resultados, mostrando um número fixo de resultados por página (10 neste caso).
-    5. Renderiza os backlinks na página HTML.
-
-    :param request: Objeto de solicitação.
-    :param url: URL para o qual os backlinks são solicitados.
-    :return: Resposta HTML com os backlinks.
-
-    Esta rota recebe um URL e retorna os backlinks associados a ele.
-    A função carrega a configuração do cliente, conecta-se ao gateway e chama a função get_backlinks.
-    Os backlinks são então renderizados na página HTML.
+    Args:
+        request (Request): Objeto de requisição FastAPI.
+        url (str): URL para o qual os backlinks serão obtidos.
+        page (int): Número da página de resultados de backlinks a ser exibida.
+        query (str): Termo de pesquisa original.
+        search_page (int): Página de pesquisa prévia.
+    
+    Returns:
+        TemplateResponse: Resposta HTML renderizada com o template "backlinks.html" contendo os backlinks.
     """
+
     global pageNum, jump
 
     backlinks = []
@@ -221,22 +218,15 @@ async def get_backlinks(request: Request, url: str = "", page: int = 1, query: s
 @router.post("/hackernews/user-stories")
 async def hacker_news_user_stories(querys_hn: dict = Body(...)):
     """
-    Rota para ir buscar o top stories do Hacker News.
-
-    Lógica:
-    1. Carrega a configuração do cliente para obter o IP e a porta do gateway.
-    2. Conecta-se ao gateway.
-    3. Busca as top stories do Hacker News.
-    4. Verifica se cada história contém as palavras-chave fornecidas na query.
-    5. Se uma história contiver todas as palavras-chave, envia o URL para o gateway para indexação.
-
-    :param query_dict: Dicionário que contém o que é para ser pesquisado.
-    :return: Mensagem de sucesso ou erro.
-
-    Depois de receber as top stories do Hacker News, vai buscar a query e vai verificar se existe alguma
-    story que contenha as palavras desejadas para esse link ser então indexado.
-    Faz uso da função submit_url do cliente para enviar o URL para o gateway.
-    Se nada for indexado vai aparecer uma messagem que assim o diz.
+    Integra com a API do Hacker News para procurar histórias cujo texto contenha todos os termos fornecidos e enviá-las para indexação.
+    É utilizada a API pública do Hacker News para obter as histórias mais recentes.
+    Cada história é verificada para ver se o texto contém todos os termos de pesquisa fornecidos.
+    Se corresponderem, o URL da história é enviado para indexação através de uma instancia do cliente.
+    
+    Args:
+        querys_hn (dict): Dicionário contendo os termos de pesquisa sob a chave "query".
+    Returns:
+        dict: Número de histórias indexadas.
     """
 
     config = load_config()
@@ -281,6 +271,16 @@ async def hacker_news_user_stories(querys_hn: dict = Body(...)):
 
 @router.post("/geminiAPI")
 async def generate_analysis(data: dict = Body(...)):
+    """
+    Gera uma análise contextualizada baseada em termos de pesquisa e snippets fornecidos, utilizando a API Gemini.
+    Utiliza a biblioteca genai para interagir com a API Gemini.
+    Constrói um prompt detalhado com os termos de pesquisa e snippets, solicitando uma análise concisa e informativa.
+
+    Args:
+        data (dict): Dicionário contendo "search_queries" e "snippets".
+    Returns:
+        dict: Análise gerada pela API Gemini.
+    """
   
     config = load_config()
     api_key = config['api_key']['key1']
@@ -323,15 +323,12 @@ async def generate_analysis(data: dict = Body(...)):
 @router.websocket("/ws/stats")
 async def websocket_endpoint(websocket: WebSocket):
     """
-    Rota WebSocket para monitorização em tempo real das estatísticas do servidor.
+    Mantém uma conexão WebSocket para enviar estatísticas em tempo real do gateway sempre que houver alterações.
 
-    Lógica:
-    1. Aceita a conexão WebSocket.
-    2. Carrega a configuração do cliente para obter o IP e a porta do gateway.
-    3. Conecta-se ao gateway.
-    4. Num loop infinito, vê as estatísticas do servidor a cada 3 segundos e envia os dados ao cliente via WebSocket.
-
-    :param websocket: Objeto WebSocket para comunicação em tempo real.
+    Args:
+        websocket (WebSocket): Conexão WebSocket com o cliente.
+    Envia:
+        JSON: Estatísticas atualizadas do gateway.
     """
     await websocket.accept() # aceitar a conexão
 
@@ -341,11 +338,21 @@ async def websocket_endpoint(websocket: WebSocket):
     gateway_port = config['gateway']['port']
     client_instance = client.Client(gateway_ip, gateway_port)
 
+    last_stats_data = {}
+
     try:
         while True:
-            stats_data = client_instance.statistics()
-            await websocket.send_json(stats_data)
-            await asyncio.sleep(5) # espera 3 seg para não sobrecarregar
+            # obter estatisticas atuais do gateway
+            current_stats_data = client_instance.statistics()
+
+            # verifica se houve mudanças nas estatísticas
+            if current_stats_data != last_stats_data:
+                await websocket.send_json(current_stats_data) # enviar dados atualizados 
+                print("WebSocket: Estatísticas enviadas.")
+
+                last_stats_data = current_stats_data # atualizar os dados das estatísticas
+
+            await asyncio.sleep(5)  # esperar antes de verificar novamente
 
     except WebSocketDisconnect:
         print("WebSocket desconectado")
@@ -364,9 +371,12 @@ def load_config():
 @router.get("/offline", response_class=HTMLResponse)
 async def offline_page():
     """
-    Rota para servir uma página offline estática.
-    Utilizada quando o servidor FastAPI está fora de funcionamento.
+    Renderiza a página fallback quando o servidor está offline.
+
+    Returns:
+        HTMLResponse: Conteúdo HTML da página offline.
     """
+    
     web_dir = "path/to/web/directory"  # Define the path to the web directory
     try:
         with open(os.path.join(web_dir, "html", "offline.html"), "r", encoding="utf-8") as f:
