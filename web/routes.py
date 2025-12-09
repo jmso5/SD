@@ -349,7 +349,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 last_stats_data = current_stats_data # atualizar os dados das estatísticas
 
-            await asyncio.sleep(5)  # esperar antes de verificar novamente
+            await asyncio.sleep(0.005)  # esperar antes de verificar novamente
 
     except WebSocketDisconnect:
         print("WebSocket desconectado")
