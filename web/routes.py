@@ -2,13 +2,39 @@
 Módulo responsável por definir as rotas da interface web do cliente.
 
 Este ficheiro usa FastAPI em conjunto com templates Jinja2 para gerir:
-- A página inicial e interface de pesquisa
-- Submissão e indexação manual de URLs
-- Sistema de paginação de resultados
-- Obtenção de backlinks
-- Integração com a API pública do Hacker News
-- Geração de análises através da API Gemini
-- Endpoint WebSocket para estatísticas em tempo real do gateway
+    - A página inicial e interface de pesquisa
+    - Submissão e indexação manual de URLs
+    - Sistema de paginação de resultados
+    - Obtenção de backlinks
+    - Integração com a API pública do Hacker News
+    - Geração de análises através da API Gemini
+    - Endpoint WebSocket para estatísticas em tempo real do gateway
+
+As principais funcionalidades e rotas implementadas incluem:
+    1. **Interface de Pesquisa (search_word):**
+        * Rota principal para a página inicial e formlário de pesquisa.
+        * Endpoint `search_word` que processa a pesquisa de termos no sistema de indexação, via client.py e Gateway.
+        * Implementação de paginação de resulados para melhorar a experiência do utilizador.
+
+    2. **Indexação e Operações do Crawler:**
+        * Endpoint `index_url`para a introdução manual de URLs para indexação, comunicação direta com o Gateway.
+        * Integração com a API do Hacker News (`hackernews/user-stories`) para obter e indexar histórias que correspondam a termos de pesquisa específicos.
+        * Endpoint `get_backlinks` que recupera e exibe a lista de URLs que apontam para um URL específico (backlinks), também com paginação.
+
+    3. **Análise e Geração de Conteúdo (`geminiAPI`):**
+        * Rota que interage com a API Gemini da Google (`gemini-2.5-flash`)
+        * Gera análises contextualizadas baseadas em termos de pesquisa e snippets fornecidos.
+    
+    4. **Estatísticas em Tempo Real via WebSocket (`/ws/stats`):**
+        * Endpoint WebSocket para manter a comunicação bidirecional e persistente.
+        * Utilizado para receber e transmitir estatísticas em tempo real do gateway e do sistema de indexação para a interface do utilizador, sendo apenas alterada quando há mudanças.
+
+    5. **Gestão de Erros e Fallbacks:**
+        * Implementa o carregamento de configurações (`load_config`) para obeter os IPs e portas do gateway a partir de um ficheiro JSON.
+        * Rota `offline` para renderizar uma página de fallback quando o servidor está offline.
+        * Endpoint de verificação de saúde (`/api/health`) para monitorizar o estadp do servidor.
+
+O módulo depende do `client.py` (localizado na pasta backend).
 """
 import json
 import os
@@ -53,6 +79,8 @@ pageNum = 1  # Página atual
 async def read_root(request: Request):
     """
     Rota que renderiza a página inicial da interface web.
+
+    Esta rota é o ponto de entrada da aplicação, apresentando o formulário de pesquisa e a interface principal.
 
     Args: 
         request (Request): Objeto de requisição FastAPI.
@@ -161,6 +189,9 @@ async def get_backlinks(request: Request, url: str = "", page: int = 1, query: s
     """
     Rota que obtem os backlinks de um URL específico e apresenta-os com paginação.
 
+    O cliente comunica com o Gateway para solicitar a lista de URLs que apontam para o URL de destino.
+    Os resultados são formatados e paginados para exibição.
+    
     Args:
         request (Request): Objeto de requisição FastAPI.
         url (str): URL para o qual os backlinks serão obtidos.
@@ -325,6 +356,11 @@ async def websocket_endpoint(websocket: WebSocket):
     """
     Mantém uma conexão WebSocket para enviar estatísticas em tempo real do gateway sempre que houver alterações.
 
+    Após aceitar a conexão, a função entra num ciclo contínuo (loop) que:
+    1. Obtém as estatísticas atuais do Gateway através do `client.statistics()`.
+    2. Compara as estatísticas atuais com as últimas estatísticas enviadas.
+    3. Envia os dados **apenas se houver alterações** (para otimizar o tráfego de rede).
+
     Args:
         websocket (WebSocket): Conexão WebSocket com o cliente.
     Envia:
@@ -371,7 +407,9 @@ def load_config():
 @router.get("/offline", response_class=HTMLResponse)
 async def offline_page():
     """
-    Renderiza a página fallback quando o servidor está offline.
+    Renderiza a página fallback quando o servidor está offline.~
+
+    Tenta ler e retornar o conteúdo HTML do ficheiro 'offline.html'.
 
     Returns:
         HTMLResponse: Conteúdo HTML da página offline.
