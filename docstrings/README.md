@@ -28,7 +28,7 @@
         * Pesquisa `search_word`-> faz chamadas gRPC síncronas ao gateway para obter resultados de pesquisa e aplica paginação.
         * Indexação manual `index_url` -> envia URL ao gateway para ser adicionado à fila.
         * Estatísticas `staws/stats` -> utiliza WebSockets para manter uma conexão persistente. O endpoint faz polling ao gateway e envia a atualização JSON ao frontend apenas se as estatísticas mudaram, otimizando o tráfego.
-        * Análise IS `geminiAPI` -> Interage com o gemini-2.5-flash, contruindo um prompt detalhado com os termos de pesquisa e snippets para gerar um resumo contextualizado
+        * Análise IA `geminiAPI` -> Interage com o gemini-2.5-flash, contruindo um prompt detalhado com os termos de pesquisa e snippets para gerar um resumo contextualizado
 
 ## Componentes chave
 1. **Gateway:** Recebe pedidos de pesquisa da interface web, distribui pelos barrels e coordena a fila de indexação.
