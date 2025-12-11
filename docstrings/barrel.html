@@ -1,212 +1,515 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-<meta charset="utf-8">
-<title>Python: module barrel</title>
-</head><body>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>barrel</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@latest/out/water.css" />
+</head>
+<body>
+<p>““” Módulo Barrel</p>
+<pre><code>- O Barrel atua como um nó de armazenamento de dados e de indexação para o
+sistema de busca. É responsável por armazenar o índice invertido e gerir a fila de URLs a visitar.
 
-<table class="heading">
-<tr class="heading-text decor">
-<td class="title">&nbsp;<br><strong class="title">barrel</strong></td>
-<td class="extra"><a href=".">index</a><br><a href="file:/Applications/LEI/3%C2%BAAno/1%C2%BASemestre/SD/Projeto/backend/SD_Meta1_JoaoOliveira_SaraFlorido/barrel.py">/Applications/LEI/3ºAno/1ºSemestre/SD/Projeto/backend/SD_Meta1_JoaoOliveira_SaraFlorido/barrel.py</a></td></tr></table>
-    <p><span class="code">Módulo&nbsp;Barrel<br>
-&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;O&nbsp;Barrel&nbsp;atua&nbsp;como&nbsp;um&nbsp;nó&nbsp;de&nbsp;armazenamento&nbsp;de&nbsp;dados&nbsp;e&nbsp;de&nbsp;indexação&nbsp;para&nbsp;o<br>
-&nbsp;&nbsp;&nbsp;&nbsp;sistema&nbsp;de&nbsp;busca.&nbsp;É&nbsp;responsável&nbsp;por&nbsp;armazenar&nbsp;o&nbsp;índice&nbsp;invertido&nbsp;e&nbsp;gerir&nbsp;a&nbsp;fila&nbsp;de&nbsp;URLs&nbsp;a&nbsp;visitar.<br>
-&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Funcionalidades&nbsp;principais:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Armazenamento&nbsp;do&nbsp;índice&nbsp;invertido:&nbsp;Mantém&nbsp;um&nbsp;índice&nbsp;que&nbsp;mapeia&nbsp;palavras-chave&nbsp;para&nbsp;URLs<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;onde&nbsp;essas&nbsp;palavras&nbsp;aparecem,&nbsp;juntamente&nbsp;um&nbsp;título,&nbsp;citação&nbsp;e&nbsp;número&nbsp;de&nbsp;links.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Gestão&nbsp;da&nbsp;fila&nbsp;de&nbsp;URLs:&nbsp;Mantém&nbsp;uma&nbsp;fila&nbsp;de&nbsp;URLs&nbsp;a&nbsp;visitar,&nbsp;permitindo&nbsp;adicionar&nbsp;novos&nbsp;URLs<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e&nbsp;retirar&nbsp;o&nbsp;próximo&nbsp;URL&nbsp;para&nbsp;processamento.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Replicação&nbsp;de&nbsp;dados:&nbsp;Replica&nbsp;os&nbsp;dados&nbsp;recebidos&nbsp;e&nbsp;os&nbsp;processados&nbsp;para&nbsp;os&nbsp;outros&nbsp;barrels<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;para&nbsp;garantir&nbsp;a&nbsp;disponibilidade&nbsp;e&nbsp;resiliência&nbsp;dos&nbsp;dados.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Comunicação&nbsp;gRPC:&nbsp;Expõe&nbsp;métodos&nbsp;gRPC&nbsp;para&nbsp;interagir&nbsp;com&nbsp;outros&nbsp;componentes&nbsp;do&nbsp;sistema,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;como&nbsp;o&nbsp;Gateway&nbsp;e&nbsp;outras&nbsp;réplicas&nbsp;de&nbsp;barrels.<br>
-&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Mecanismos&nbsp;de&nbsp;Sincronização:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Ao&nbsp;iniciar,&nbsp;o&nbsp;Barrel&nbsp;verifica&nbsp;a&nbsp;disponibilidade&nbsp;das&nbsp;suas&nbsp;réplicas.&nbsp;Se&nbsp;encontrar&nbsp;réplicas&nbsp;disponíveis,&nbsp;sincroniza&nbsp;a&nbsp;sua&nbsp;fila&nbsp;de&nbsp;URLs&nbsp;e&nbsp;índice&nbsp;invertido<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;com&nbsp;a&nbsp;primeira&nbsp;réplica&nbsp;disponível.&nbsp;Se&nbsp;nenhuma&nbsp;réplica&nbsp;estiver&nbsp;disponível,&nbsp;carrega&nbsp;os&nbsp;dados&nbsp;locais&nbsp;a&nbsp;partir&nbsp;de&nbsp;ficheiros<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;previamente&nbsp;guardados.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;As&nbsp;operações&nbsp;de&nbsp;comidicação&nbsp;de&nbsp;estado&nbsp;(putNew,&nbsp;takeNext,&nbsp;addToIndex)&nbsp;são&nbsp;replicadas&nbsp;para&nbsp;todas&nbsp;as&nbsp;réplicas&nbsp;disponíveis,&nbsp;mantendo&nbsp;a&nbsp;consistência&nbsp;dos&nbsp;dados.<br>
-&nbsp;<br>
-&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Estrutura&nbsp;do&nbsp;indice&nbsp;invertido:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"palavra1":&nbsp;[<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(url1,&nbsp;title1,&nbsp;citacao1,&nbsp;links_count1),<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(url2,&nbsp;title2,&nbsp;citacao2,&nbsp;links_count2),<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;],<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"palavra2":&nbsp;[<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(url3,&nbsp;title3,&nbsp;citacao3,&nbsp;links_count3),<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;],<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}</span></p>
-<p>
-<table class="section">
-<tr class="decor pkg-content-decor heading-text">
-<td class="section-title" colspan=3>&nbsp;<br><strong class="bigsection">Modules</strong></td></tr>
+- Funcionalidades principais:
+    - Armazenamento do índice invertido: Mantém um índice que mapeia palavras-chave para URLs
+      onde essas palavras aparecem, juntamente um título, citação e número de links.
+    - Gestão da fila de URLs: Mantém uma fila de URLs a visitar, permitindo adicionar novos URLs
+      e retirar o próximo URL para processamento.
+    - Replicação de dados: Replica os dados recebidos e os processados para os outros barrels
+      para garantir a disponibilidade e resiliência dos dados.
+    - Comunicação gRPC: Expõe métodos gRPC para interagir com outros componentes do sistema,
+      como o Gateway e outras réplicas de barrels.
+
+- Mecanismos de Sincronização:
+    - Ao iniciar, o Barrel verifica a disponibilidade das suas réplicas. Se encontrar réplicas disponíveis, sincroniza a sua fila de URLs e índice invertido
+      com a primeira réplica disponível. Se nenhuma réplica estiver disponível, carrega os dados locais a partir de ficheiros
+      previamente guardados.
+    - As operações de comidicação de estado (putNew, takeNext, addToIndex) são replicadas para todas as réplicas disponíveis, mantendo a consistência dos dados.
+
+
+- Estrutura do indice invertido:
+    {
+        &quot;palavra1&quot;: [
+            (url1, title1, citacao1, links_count1),
+            (url2, title2, citacao2, links_count2),
+            ...
+        ],
+        &quot;palavra2&quot;: [
+            (url3, title3, citacao3, links_count3),
+            ...
+        ],
+        ...
+    }</code></pre>
+<p>““”</p>
+<p>from concurrent import futures import grpc from google.protobuf
+import empty_pb2 import index_pb2 import index_pb2_grpc from queue
+import Queue import pickle import os import sys import json import
+random import time</p>
+<p>MAX_MESSAGE_LENGTH = 104857600 #50 * 1024 * 1024</p>
+<p>class BarrelServicer(index_pb2_grpc.StorageBarrelServicer,
+index_pb2_grpc.GatewayServicer): ““” Servidor gRPC que atua como um
+Barrek, providenciando serviços de indexação , pesquisa e gerenciamento
+da fila de URLs.</p>
+<pre><code>Atributos:
+    - barrel_id: Identificador único do barrel.
+    - indice_invertido: Dicionário que representa o índice invertido.
+    - fila: Fila de URLs a visitar.
+    - urls_guardados: Conjunto de URLs já visitadas.
+    - replica_stubs: Lista de stubs para comunicação com réplicas de barrels.
+    - ficheiro_fila: Nome do ficheiro para armazenar a fila de URLs.
+    - ficheiro_indice: Nome do ficheiro para armazenar o índice invertido.
+    - ficheiro_visitados: Nome do ficheiro para armazenar as URLs visitadas.
+&quot;&quot;&quot;
+
+def __init__(self, barrel_id, replica_barrels, ficheiro_fila=&quot;urls_queue.pkl&quot;, ficheiro_indice=&quot;inverted_index.pkl&quot;, ficheiro_visitados=&quot;visited_urls.pkl&quot;):
+    &quot;&quot;&quot;
+    Inicializa o Barrel, estabelecendo conexões com réplicas e carregando dados se possível.
+
+    &quot;&quot;&quot;
     
-<tr><td class="decor pkg-content-decor"><span class="code">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td>&nbsp;</td>
-<td class="singlecolumn"><table><tr><td class="multicolumn"><a href="google.protobuf.empty_pb2.html">google.protobuf.empty_pb2</a><br>
-<a href="concurrent.futures.html">concurrent.futures</a><br>
-<a href="grpc.html">grpc</a><br>
-</td><td class="multicolumn"><a href="index_pb2.html">index_pb2</a><br>
-<a href="index_pb2_grpc.html">index_pb2_grpc</a><br>
-<a href="json.html">json</a><br>
-</td><td class="multicolumn"><a href="os.html">os</a><br>
-<a href="pickle.html">pickle</a><br>
-<a href="random.html">random</a><br>
-</td><td class="multicolumn"><a href="sys.html">sys</a><br>
-<a href="time.html">time</a><br>
-</td></tr></table></td></tr></table><p>
-<table class="section">
-<tr class="decor index-decor heading-text">
-<td class="section-title" colspan=3>&nbsp;<br><strong class="bigsection">Classes</strong></td></tr>
+    self.barrel_id = barrel_id # id do barrel 
+    self.indice_invertido = {} # estrutura do índice invertido
+
+    self.replica_stubs = self.connect_replica_barrels(replica_barrels) # conecta às réplicas dos barrels
+    print(f&quot;[Iniciado] Barrel com {len(self.replica_stubs)} réplicas conectadas.&quot;)
+
+    available_replicas = []
+    available_replicas = self.check_available_replicas() # verifica réplicas disponíveis
+
+    # gestão na fila local de URLs
+    self.fila = Queue()
+    self.urls_guardados = set() # evita urls duplicados
+    self.ficheiro_fila = ficheiro_fila
+    self.ficheiro_indice = ficheiro_indice
+    self.ficheiro_visitados = ficheiro_visitados
+
+    if available_replicas == []:
+        print(&quot;[ATENÇÃO] Nenhuma réplica de Barrel está disponível no momento.&quot;)
+        self.carregar_dados() # carrega dados dos ficheiros, se existir
+
+    else:
+        print(f&quot;[Info] Réplicas disponíveis: {len(available_replicas)}. Sincronizando fila de URLs...&quot;)
     
-<tr><td class="decor index-decor"><span class="code">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td>&nbsp;</td>
-<td class="singlecolumn"><dl>
-<dt class="heading-text"><a href="index_pb2_grpc.html#GatewayServicer">index_pb2_grpc.GatewayServicer</a>(<a href="builtins.html#object">builtins.object</a>)
-</dt><dd>
-<dl>
-<dt class="heading-text"><a href="barrel.html#BarrelServicer">BarrelServicer</a>(<a href="index_pb2_grpc.html#StorageBarrelServicer">index_pb2_grpc.StorageBarrelServicer</a>, <a href="index_pb2_grpc.html#GatewayServicer">index_pb2_grpc.GatewayServicer</a>)
-</dt></dl>
-</dd>
-<dt class="heading-text"><a href="index_pb2_grpc.html#StorageBarrelServicer">index_pb2_grpc.StorageBarrelServicer</a>(<a href="builtins.html#object">builtins.object</a>)
-</dt><dd>
-<dl>
-<dt class="heading-text"><a href="barrel.html#BarrelServicer">BarrelServicer</a>(<a href="index_pb2_grpc.html#StorageBarrelServicer">index_pb2_grpc.StorageBarrelServicer</a>, <a href="index_pb2_grpc.html#GatewayServicer">index_pb2_grpc.GatewayServicer</a>)
-</dt></dl>
-</dd>
-</dl>
- <p>
-<table class="section">
-<tr class="decor title-decor heading-text">
-<td class="section-title" colspan=3>&nbsp;<br><a name="BarrelServicer">class <strong>BarrelServicer</strong></a>(<a href="index_pb2_grpc.html#StorageBarrelServicer">index_pb2_grpc.StorageBarrelServicer</a>, <a href="index_pb2_grpc.html#GatewayServicer">index_pb2_grpc.GatewayServicer</a>)</td></tr>
+        # sincroniza a fila com a primeira réplica disponível
+        replica_stub = random.choice(available_replicas)
+        try:
+            replica_stub.guardar_dados_replica(empty_pb2.Empty()) # pede à réplica para carregar os dados
+
+            self.carregar_dados()
+        except grpc.RpcError as e:
+            print(f&quot;[Erro] ao sincronizar fila com réplica: {e}&quot;)
+            
+
+
+def connect_replica_barrels(self, addresses):
+    &quot;&quot;&quot;
+    Método connect_replica_barrels:
+        - Estabelece conexões gRPC com as réplicas dos barrels.
+        - Retorna uma lista de stubs para comunicação com as réplicas.
+    &quot;&quot;&quot;
+    stubs = []
+
+    options = [
+        (&#39;grpc.max_send_message_length&#39;, MAX_MESSAGE_LENGTH),
+        (&#39;grpc.max_receive_message_length&#39;, MAX_MESSAGE_LENGTH),
+    ]
+
+    for addr in addresses:
+        channel = grpc.insecure_channel(addr, options=options) # cria canal gRPC
+        stub = index_pb2_grpc.StorageBarrelStub(channel) # cria stub remoto
+        stubs.append(stub)
+    return stubs
+
+def check_available_replicas(self): 
+    &quot;&quot;&quot;
+    Método check_available_replicas:
+        - Verifica a disponibilidade das réplicas dos barrels.
+        - Utiliza uma chamada simples para verificar se a réplica está ativa (checkHealth).
+        - Retorna uma lista de stubs das réplicas disponíveis.
+    &quot;&quot;&quot;  
+    available_stubs = []
+    for stub in self.replica_stubs:
+        try:
+            stub.checkHealth(empty_pb2.Empty()) # chamada simples para verificar disponibilidade
+            available_stubs.append(stub)
+        except grpc.RpcError:
+            print(&quot;[Replica] Réplica indisponível.&quot;)
+    self.replica_stubs = available_stubs
+
+    return available_stubs
+
+
+def addToIndex(self, request, context):
+    &quot;&quot;&quot;
+    Método addToIndex:
+            - Se palavra ainda não existir no índice, cria uma nova entrada.
+            - Se o URL já existir para a palavra, ignora o pedido para evitar duplicados.
+            - Adiciona o novo registo (URL, título, citação, número de links) ao índice invertido.
+    &quot;&quot;&quot;
+
+    palavra = request.word.lower() # normaliza palavra
+    url = request.url
+    title = request.title
+    citacao = request.citacao
+    links_count = request.links_count
+
+    novo_registo = (url, title, citacao, links_count) # estrutura do registo
+
+    if palavra not in self.indice_invertido:
+        self.indice_invertido[palavra] = [] # cria nova entrada
+
+    # evita duplicados    
+    for registo in self.indice_invertido[palavra]:
+        if registo[0] == url:
+            return empty_pb2.Empty() 
+
+    self.indice_invertido[palavra].append(novo_registo) # adiciona ao índice
+
+    print(f&quot;[Adicionada] &#39;{palavra}&#39; -&gt; {url} (Revelânica: {links_count})&quot;)
+    return empty_pb2.Empty()
+
+def searchWord(self, request, context):
+    &quot;&quot;&quot;
+    Método searchWord:
+        - Pesquisa uma palavra no índice invertido.
+        - Ordena os resultados por relevância.
+        - Converte os resultados para o formato protobuf.
+        - Retorna uma lista de resultados ordenados por relevância (número de links).
+    &quot;&quot;&quot;
+
+    termo = request.word.lower()
+    resultados = []
+
+    if termo in self.indice_invertido:
+        # ordena os resultados por relevância
+        resultados_ordenados = sorted(
+            self.indice_invertido[termo],
+            key = lambda x: x[3],
+            reverse= True
+        )
+
+        # converte para formato protobuf
+        for url, title, citacao, links_count in resultados_ordenados:
+            resultados.append(
+                index_pb2.SearchResult(
+                    url=url,
+                    title=title,
+                    text=citacao,
+                    links_count = links_count
+                )
+            )
+
+    print(f&quot;Pesquisa &#39;{termo}&#39; -&gt; {len(resultados)} resultados&quot;)
+    return index_pb2.SearchWordResponse(results=resultados)
+
+
+def searchVariousWords(self, request, context):
+    &quot;&quot;&quot;
+    Método searchVariousWords:
+        - Pesquisa várias palavras no índice invertido.
+        - Conta quantas palavras de pesquisa aparecem em cada URL.
+        - Filtra os resultados para incluir apenas URLs que contêm todas as palavras pesquisadas.
+        - Ordena os resultados pelo número de palavras encontradas e pela relevância.
+        - Converte os resultados para o formato protobuf.
+        - Retorna uma lista de resultados ordenados.
+    &quot;&quot;&quot;
+
+
+    word_details = {}
+    for word in request.words:
+        termo = word.lower()
+        if termo in self.indice_invertido:
+            for url, title, citacao, links_count in self.indice_invertido[termo]:
+                if url not in word_details:
+                    word_details[url] = {
+                        &#39;url&#39;: url,
+                        &#39;title&#39;: title,
+                        &#39;citacao&#39;: citacao,
+                        &#39;links_count&#39;: links_count,
+                        &#39;count&#39;: 1  # número de palavras encontradas neste URL
+                    }
+                else:
+                    print(f&quot;Incrementing count for URL: {url}&quot;)
+                    word_details[url][&#39;count&#39;] += 1
+
+    resultados = []
+    for details in word_details.values():
+        # Apenas inclui resultados que contêm todas as palavras pesquisadas
+        if details[&#39;count&#39;] == len(request.words): 
+            resultados.append(
+                index_pb2.SearchResult(
+                    url=details[&#39;url&#39;],
+                    title=details[&#39;title&#39;],
+                    text=details[&#39;citacao&#39;],
+                    links_count=details[&#39;links_count&#39;]
+                )
+            )
+    # ordena os resultados pelo número de palavras encontradas e depois por relevância
+    resultados.sort(key=lambda x: (word_details[x.url][&#39;count&#39;], x.links_count), reverse=True)
+
+    print(f&quot;Pesquisa várias palavras &#39;{&#39;, &#39;.join(request.words)}&#39; -&gt; {len(resultados)} resultados&quot;)
+    return index_pb2.SearchWordResponse(results=resultados)
+
+def carregar_dados(self):
+    &quot;&quot;&quot;
+    Método carregar_dados:
+        - Carrega a fila de URLs, o índice invertido e as URLs visitadas a partir de ficheiros.
+        - Utiliza pickle para desserializar os dados.
+        - Verifica se os ficheiros existem antes de tentar carregá-los.
+    &quot;&quot;&quot;
+
+    if os.path.exists(self.ficheiro_indice): # verifica se o ficheiro existe
+        try:
+            with open(self.ficheiro_indice, &quot;rb&quot;) as f:
+                self.indice_invertido = pickle.load(f) # deserializa o conjunto de URLs
+            print(f&quot;[Indice Invertido carregado] com {len(self.indice_invertido)} URLs.&quot;)
+        except Exception as e:
+            print(f&quot;[Erro] ao carregar Indice Invertido: {e}&quot;)
+
+    if os.path.exists(self.ficheiro_fila): # verifica se o ficheiro existe
+        try:
+            with open(self.ficheiro_fila, &quot;rb&quot;) as f:
+                fila = pickle.load(f) # deserializa o conjunto de URLs
+                for url in fila:
+                    self.fila.put(url)
+
+            print(f&quot;[Fila carregada] com {self.fila.qsize()} URLs.&quot;)
+        except Exception as e:
+            print(f&quot;[Erro] ao carregar fila: {e}&quot;)
+
+    if os.path.exists(self.ficheiro_visitados): # verifica se o ficheiro existe
+        try:
+            with open(self.ficheiro_visitados, &quot;rb&quot;) as f:
+                self.urls_guardados = pickle.load(f) # deserializa o conjunto de URLs visitadas
+            print(f&quot;[Urls visitados carregadas] com {len(self.urls_guardados)} URLs.&quot;)
+        except Exception as e:
+            print(f&quot;[Erro] ao carregar urls visitados: {e}&quot;)
+
+
+def guardar_dados_replica(self, request, context):
+    &quot;&quot;&quot;
+    Método guardar_dados_replica:
+        - Guarda a fila de URLs, o índice invertido e as URLs visitadas em ficheiros.
+        - Serve apenas para ser chamado pelasmas réplicas dos barrels. 
+    &quot;&quot;&quot;
+
+    self.guardar_dados()
+    time.sleep(1) # espera 1 segundo para garantir que os dados são escritos           VERIFICAR
+
+    return empty_pb2.Empty()
+
+def guardar_dados(self):
+    &quot;&quot;&quot;
+    Método guardar_dados:
+        - Guarda a fila de URLs, o índice invertido e as URLs visitadas em ficheiros.
+        - Utiliza pickle para serializar os dados.
+    &quot;&quot;&quot;
+
+    try:
+        with open(self.ficheiro_indice, &quot;wb&quot;) as f:
+            pickle.dump(self.indice_invertido, f) # guarda urls num ficheiro
+        print(f&quot;[Indice invertido guardado]&quot;)
+    except Exception as e:
+        print(f&quot;[Erro] ao guardar indice invertido: {e}&quot;)
+
+    try:
+        with open(self.ficheiro_visitados, &quot;wb&quot;) as f:
+            pickle.dump(self.urls_guardados, f) # guarda urls num ficheiro
+        print(f&quot;[Urls visitadas guardadas] ({len(self.urls_guardados)} URLs).&quot;)
+    except Exception as e:
+        print(f&quot;[Erro] ao guardar urls visitadas: {e}&quot;)
+
+    try:
+        with open(self.ficheiro_fila, &quot;wb&quot;) as f:
+            pickle.dump(list(self.fila.queue), f) # guarda urls num ficheiro
+        print(f&quot;[Fila guardada] ({self.fila.qsize()} URLs).&quot;)
+    except Exception as e: 
+        print(f&quot;[Erro] ao guardar fila: {e}&quot;)
+
+
+def checkHealth(self, request, context):   
+    &quot;&quot;&quot;
+    Método checkHealth:
+        - Método simples para verificar se o barrel está ativo.
+        - Retorna uma resposta vazia se o barrel estiver operacional.
+    &quot;&quot;&quot;
+
+    return empty_pb2.Empty()
     
-<tr><td class="decor title-decor" rowspan=2><span class="code">&nbsp;&nbsp;&nbsp;</span></td>
-<td class="decor title-decor" colspan=2><span class="code"><a href="#BarrelServicer">BarrelServicer</a>(barrel_id,&nbsp;replica_barrels,&nbsp;ficheiro_fila='urls_queue.pkl',&nbsp;ficheiro_indice='inverted_index.pkl',&nbsp;ficheiro_visitados='visited_urls.pkl')<br>
-&nbsp;<br>
-Servidor&nbsp;gRPC&nbsp;que&nbsp;atua&nbsp;como&nbsp;um&nbsp;Barrek,&nbsp;providenciando&nbsp;serviços&nbsp;de&nbsp;indexação&nbsp;,&nbsp;pesquisa&nbsp;e&nbsp;gerenciamento&nbsp;da&nbsp;fila&nbsp;de&nbsp;URLs.<br>
-&nbsp;<br>
-Atributos:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;barrel_id:&nbsp;Identificador&nbsp;único&nbsp;do&nbsp;barrel.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;indice_invertido:&nbsp;Dicionário&nbsp;que&nbsp;representa&nbsp;o&nbsp;índice&nbsp;invertido.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;fila:&nbsp;Fila&nbsp;de&nbsp;URLs&nbsp;a&nbsp;visitar.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;urls_guardados:&nbsp;Conjunto&nbsp;de&nbsp;URLs&nbsp;já&nbsp;visitadas.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;replica_stubs:&nbsp;Lista&nbsp;de&nbsp;stubs&nbsp;para&nbsp;comunicação&nbsp;com&nbsp;réplicas&nbsp;de&nbsp;barrels.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;ficheiro_fila:&nbsp;Nome&nbsp;do&nbsp;ficheiro&nbsp;para&nbsp;armazenar&nbsp;a&nbsp;fila&nbsp;de&nbsp;URLs.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;ficheiro_indice:&nbsp;Nome&nbsp;do&nbsp;ficheiro&nbsp;para&nbsp;armazenar&nbsp;o&nbsp;índice&nbsp;invertido.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;ficheiro_visitados:&nbsp;Nome&nbsp;do&nbsp;ficheiro&nbsp;para&nbsp;armazenar&nbsp;as&nbsp;URLs&nbsp;visitadas.<br>&nbsp;</span></td></tr>
-<tr><td>&nbsp;</td>
-<td class="singlecolumn"><dl><dt>Method resolution order:</dt>
-<dd><a href="barrel.html#BarrelServicer">BarrelServicer</a></dd>
-<dd><a href="index_pb2_grpc.html#StorageBarrelServicer">index_pb2_grpc.StorageBarrelServicer</a></dd>
-<dd><a href="index_pb2_grpc.html#GatewayServicer">index_pb2_grpc.GatewayServicer</a></dd>
-<dd><a href="builtins.html#object">builtins.object</a></dd>
-</dl>
-<hr>
-Methods defined here:<br>
-<dl><dt><a name="BarrelServicer-__init__"><strong>__init__</strong></a>(self, barrel_id, replica_barrels, ficheiro_fila='urls_queue.pkl', ficheiro_indice='inverted_index.pkl', ficheiro_visitados='visited_urls.pkl')</dt><dd><span class="code">Inicializa&nbsp;o&nbsp;Barrel,&nbsp;estabelecendo&nbsp;conexões&nbsp;com&nbsp;réplicas&nbsp;e&nbsp;carregando&nbsp;dados&nbsp;se&nbsp;possível.</span></dd></dl>
 
-<dl><dt><a name="BarrelServicer-addToIndex"><strong>addToIndex</strong></a>(self, request, context)</dt><dd><span class="code">Método&nbsp;addToIndex:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Se&nbsp;palavra&nbsp;ainda&nbsp;não&nbsp;existir&nbsp;no&nbsp;índice,&nbsp;cria&nbsp;uma&nbsp;nova&nbsp;entrada.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Se&nbsp;o&nbsp;URL&nbsp;já&nbsp;existir&nbsp;para&nbsp;a&nbsp;palavra,&nbsp;ignora&nbsp;o&nbsp;pedido&nbsp;para&nbsp;evitar&nbsp;duplicados.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Adiciona&nbsp;o&nbsp;novo&nbsp;registo&nbsp;(URL,&nbsp;título,&nbsp;citação,&nbsp;número&nbsp;de&nbsp;links)&nbsp;ao&nbsp;índice&nbsp;invertido.</span></dd></dl>
+def putNew(self, request, context):
+    &quot;&quot;&quot;
+    Método putNew:
+        - Adiciona um novo URL à fila de URLs a visitar.
+        - Evita adicionar URLs duplicados.
+        - Replica o pedido para as réplicas dos barrels disponíveis.
+    &quot;&quot;&quot;
 
-<dl><dt><a name="BarrelServicer-carregar_dados"><strong>carregar_dados</strong></a>(self)</dt><dd><span class="code">Método&nbsp;carregar_dados:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Carrega&nbsp;a&nbsp;fila&nbsp;de&nbsp;URLs,&nbsp;o&nbsp;índice&nbsp;invertido&nbsp;e&nbsp;as&nbsp;URLs&nbsp;visitadas&nbsp;a&nbsp;partir&nbsp;de&nbsp;ficheiros.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Utiliza&nbsp;pickle&nbsp;para&nbsp;desserializar&nbsp;os&nbsp;dados.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Verifica&nbsp;se&nbsp;os&nbsp;ficheiros&nbsp;existem&nbsp;antes&nbsp;de&nbsp;tentar&nbsp;carregá-los.</span></dd></dl>
+    url = request.url
 
-<dl><dt><a name="BarrelServicer-checkHealth"><strong>checkHealth</strong></a>(self, request, context)</dt><dd><span class="code">Método&nbsp;checkHealth:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Método&nbsp;simples&nbsp;para&nbsp;verificar&nbsp;se&nbsp;o&nbsp;barrel&nbsp;está&nbsp;ativo.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Retorna&nbsp;uma&nbsp;resposta&nbsp;vazia&nbsp;se&nbsp;o&nbsp;barrel&nbsp;estiver&nbsp;operacional.</span></dd></dl>
+    if url not in self.urls_guardados:
+        self.fila.put(url) # adiciona à fila
 
-<dl><dt><a name="BarrelServicer-check_available_replicas"><strong>check_available_replicas</strong></a>(self)</dt><dd><span class="code">Método&nbsp;check_available_replicas:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Verifica&nbsp;a&nbsp;disponibilidade&nbsp;das&nbsp;réplicas&nbsp;dos&nbsp;barrels.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Utiliza&nbsp;uma&nbsp;chamada&nbsp;simples&nbsp;para&nbsp;verificar&nbsp;se&nbsp;a&nbsp;réplica&nbsp;está&nbsp;ativa&nbsp;(checkHealth).<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Retorna&nbsp;uma&nbsp;lista&nbsp;de&nbsp;stubs&nbsp;das&nbsp;réplicas&nbsp;disponíveis.</span></dd></dl>
+        print(f&quot;[Fila] Adicionado novo URL: {url}. URLs totais: {self.fila.qsize()}&quot;)
 
-<dl><dt><a name="BarrelServicer-connect_replica_barrels"><strong>connect_replica_barrels</strong></a>(self, addresses)</dt><dd><span class="code">Método&nbsp;connect_replica_barrels:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Estabelece&nbsp;conexões&nbsp;gRPC&nbsp;com&nbsp;as&nbsp;réplicas&nbsp;dos&nbsp;barrels.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Retorna&nbsp;uma&nbsp;lista&nbsp;de&nbsp;stubs&nbsp;para&nbsp;comunicação&nbsp;com&nbsp;as&nbsp;réplicas.</span></dd></dl>
+        available_replicas = self.check_available_replicas()
 
-<dl><dt><a name="BarrelServicer-getIndexSize"><strong>getIndexSize</strong></a>(self, request, context)</dt><dd><span class="code">Método&nbsp;getIndexSize:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Retorna&nbsp;o&nbsp;tamanho&nbsp;do&nbsp;índice&nbsp;invertido.</span></dd></dl>
+        # Replica o putNew para as réplicas dos barrels
+        sucessos = 0
+        for stub in available_replicas:
+            max_retries = 3 # tenta 3 vezes contactar esta réplica
+            for attempt in range(max_retries):
+                try:
+                    stub.putNew(request) # envia o mesmo pedido para a réplica
+                    sucessos += 1
+                    print(f&quot;[Replica] Sucesso em putNew para réplica (tentativa {attempt + 1}).&quot;)
+                    break # sai do loop de retries -&gt; sucesso para esta réplica
+                except grpc.RpcError as e:
+                    print(f&quot;[Replica] Falha ao replicar putNew para réplica (tentativa {attempt + 1}): {e}&quot;)
+                    
+        # o Barrel não falha se nenhuma réplica estiver ativa, mas imprime um aviso
+        if sucessos == 0 and self.replica_stubs:
+            print(&quot;[ATENÇÃO] NENHUMA réplica Barrel recebeu o putNew.&quot;)
 
-<dl><dt><a name="BarrelServicer-guardar_dados"><strong>guardar_dados</strong></a>(self)</dt><dd><span class="code">Método&nbsp;guardar_dados:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Guarda&nbsp;a&nbsp;fila&nbsp;de&nbsp;URLs,&nbsp;o&nbsp;índice&nbsp;invertido&nbsp;e&nbsp;as&nbsp;URLs&nbsp;visitadas&nbsp;em&nbsp;ficheiros.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Utiliza&nbsp;pickle&nbsp;para&nbsp;serializar&nbsp;os&nbsp;dados.</span></dd></dl>
+    return empty_pb2.Empty()
 
-<dl><dt><a name="BarrelServicer-guardar_dados_replica"><strong>guardar_dados_replica</strong></a>(self, request, context)</dt><dd><span class="code">Método&nbsp;guardar_dados_replica:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Guarda&nbsp;a&nbsp;fila&nbsp;de&nbsp;URLs,&nbsp;o&nbsp;índice&nbsp;invertido&nbsp;e&nbsp;as&nbsp;URLs&nbsp;visitadas&nbsp;em&nbsp;ficheiros.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Serve&nbsp;apenas&nbsp;para&nbsp;ser&nbsp;chamado&nbsp;pelasmas&nbsp;réplicas&nbsp;dos&nbsp;barrels.</span></dd></dl>
-
-<dl><dt><a name="BarrelServicer-putNew"><strong>putNew</strong></a>(self, request, context)</dt><dd><span class="code">Método&nbsp;putNew:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Adiciona&nbsp;um&nbsp;novo&nbsp;URL&nbsp;à&nbsp;fila&nbsp;de&nbsp;URLs&nbsp;a&nbsp;visitar.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Evita&nbsp;adicionar&nbsp;URLs&nbsp;duplicados.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Replica&nbsp;o&nbsp;pedido&nbsp;para&nbsp;as&nbsp;réplicas&nbsp;dos&nbsp;barrels&nbsp;disponíveis.</span></dd></dl>
-
-<dl><dt><a name="BarrelServicer-searchVariousWords"><strong>searchVariousWords</strong></a>(self, request, context)</dt><dd><span class="code">Método&nbsp;searchVariousWords:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Pesquisa&nbsp;várias&nbsp;palavras&nbsp;no&nbsp;índice&nbsp;invertido.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Conta&nbsp;quantas&nbsp;palavras&nbsp;de&nbsp;pesquisa&nbsp;aparecem&nbsp;em&nbsp;cada&nbsp;URL.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Filtra&nbsp;os&nbsp;resultados&nbsp;para&nbsp;incluir&nbsp;apenas&nbsp;URLs&nbsp;que&nbsp;contêm&nbsp;todas&nbsp;as&nbsp;palavras&nbsp;pesquisadas.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Ordena&nbsp;os&nbsp;resultados&nbsp;pelo&nbsp;número&nbsp;de&nbsp;palavras&nbsp;encontradas&nbsp;e&nbsp;pela&nbsp;relevância.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Converte&nbsp;os&nbsp;resultados&nbsp;para&nbsp;o&nbsp;formato&nbsp;protobuf.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Retorna&nbsp;uma&nbsp;lista&nbsp;de&nbsp;resultados&nbsp;ordenados.</span></dd></dl>
-
-<dl><dt><a name="BarrelServicer-searchWord"><strong>searchWord</strong></a>(self, request, context)</dt><dd><span class="code">Método&nbsp;searchWord:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Pesquisa&nbsp;uma&nbsp;palavra&nbsp;no&nbsp;índice&nbsp;invertido.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Ordena&nbsp;os&nbsp;resultados&nbsp;por&nbsp;relevância.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Converte&nbsp;os&nbsp;resultados&nbsp;para&nbsp;o&nbsp;formato&nbsp;protobuf.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Retorna&nbsp;uma&nbsp;lista&nbsp;de&nbsp;resultados&nbsp;ordenados&nbsp;por&nbsp;relevância&nbsp;(número&nbsp;de&nbsp;links).</span></dd></dl>
-
-<dl><dt><a name="BarrelServicer-takeNext"><strong>takeNext</strong></a>(self, request, context)</dt><dd><span class="code">Método&nbsp;takeNext:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Retira&nbsp;o&nbsp;próximo&nbsp;URL&nbsp;da&nbsp;fila&nbsp;de&nbsp;URLs&nbsp;a&nbsp;visitar.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Marca&nbsp;o&nbsp;URL&nbsp;como&nbsp;visitado.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Notifica&nbsp;as&nbsp;réplicas&nbsp;dos&nbsp;barrels&nbsp;para&nbsp;também&nbsp;retirarem&nbsp;o&nbsp;próximo&nbsp;URL.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Retorna&nbsp;o&nbsp;URL&nbsp;retirado.</span></dd></dl>
-
-<dl><dt><a name="BarrelServicer-takeProcessedUrl"><strong>takeProcessedUrl</strong></a>(self, request, context)</dt><dd><span class="code">Método&nbsp;takeProcessedUrl:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Retira&nbsp;o&nbsp;próximo&nbsp;URL&nbsp;da&nbsp;fila&nbsp;de&nbsp;URLs&nbsp;a&nbsp;visitar.</span></dd></dl>
-
-<hr>
-Data descriptors inherited from <a href="index_pb2_grpc.html#StorageBarrelServicer">index_pb2_grpc.StorageBarrelServicer</a>:<br>
-<dl><dt><strong>__dict__</strong></dt>
-<dd><span class="code">dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</span></dd>
-</dl>
-<dl><dt><strong>__weakref__</strong></dt>
-<dd><span class="code">list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</span></dd>
-</dl>
-<hr>
-Methods inherited from <a href="index_pb2_grpc.html#GatewayServicer">index_pb2_grpc.GatewayServicer</a>:<br>
-<dl><dt><a name="BarrelServicer-getBacklinks"><strong>getBacklinks</strong></a>(self, request, context)</dt><dd><span class="code">Missing&nbsp;associated&nbsp;documentation&nbsp;comment&nbsp;in&nbsp;.proto&nbsp;file.</span></dd></dl>
-
-<dl><dt><a name="BarrelServicer-getStatistics"><strong>getStatistics</strong></a>(self, request, context)</dt><dd><span class="code">Missing&nbsp;associated&nbsp;documentation&nbsp;comment&nbsp;in&nbsp;.proto&nbsp;file.</span></dd></dl>
-
-</td></tr></table></td></tr></table><p>
-<table class="section">
-<tr class="decor functions-decor heading-text">
-<td class="section-title" colspan=3>&nbsp;<br><strong class="bigsection">Functions</strong></td></tr>
+def takeNext(self, request, context):    
+    &quot;&quot;&quot;
+    Método takeNext:
+        - Retira o próximo URL da fila de URLs a visitar.
+        - Marca o URL como visitado.
+        - Notifica as réplicas dos barrels para também retirarem o próximo URL.
+        - Retorna o URL retirado.
+    &quot;&quot;&quot;    
     
-<tr><td class="decor functions-decor"><span class="code">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td>&nbsp;</td>
-<td class="singlecolumn"><dl><dt><a name="-load_config"><strong>load_config</strong></a>(file_path='config.json')</dt><dd><span class="code">Função&nbsp;load_config:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Carrega&nbsp;a&nbsp;configuração&nbsp;do&nbsp;ficheiro&nbsp;JSON&nbsp;especificado.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Retorna&nbsp;o&nbsp;conteúdo&nbsp;do&nbsp;ficheiro&nbsp;como&nbsp;um&nbsp;dicionário&nbsp;Python.</span></dd></dl>
- <dl><dt><a name="-server"><strong>server</strong></a>(port, barrel_id)</dt><dd><span class="code">Função&nbsp;server:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Inicia&nbsp;o&nbsp;servidor&nbsp;gRPC&nbsp;do&nbsp;Barrel.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Configura&nbsp;as&nbsp;opções&nbsp;de&nbsp;tamanho&nbsp;máximo&nbsp;de&nbsp;mensagem.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Carrega&nbsp;a&nbsp;configuração&nbsp;para&nbsp;obter&nbsp;informações&nbsp;sobre&nbsp;réplicas.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Regista&nbsp;os&nbsp;serviços&nbsp;do&nbsp;Barrel&nbsp;no&nbsp;servidor&nbsp;gRPC.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Inicia&nbsp;o&nbsp;servidor&nbsp;e&nbsp;aguarda&nbsp;por&nbsp;terminação.</span></dd></dl>
-</td></tr></table><p>
-<table class="section">
-<tr class="decor data-decor heading-text">
-<td class="section-title" colspan=3>&nbsp;<br><strong class="bigsection">Data</strong></td></tr>
+    try:
+        url = self.fila.get_nowait() # retira o próximo URL da fila
+        self.urls_guardados.add(url) # marca como visitado
+
+        print(f&quot;[Fila] Entregue URL: {url}. Restam {self.fila.qsize()} URLs.&quot;)
+
+        available_replicas = self.check_available_replicas()   
+
+        for stub in available_replicas:
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    stub.takeProcessedUrl(empty_pb2.Empty()) # notifica a réplica para retirar o  URL
+                    print(f&quot;[Replica] Sucesso em takeNext para réplica (tentativa {attempt + 1}).&quot;)
+                    break
+                except grpc.RpcError as e:
+                    print(f&quot;[Replica] Falha ao replicar takeNext para réplica (tentativa {attempt + 1})&quot;)
+
+        return index_pb2.TakeNextResponse(url=url)
+
+    except Exception as e:
+        print(f&quot;Erro ao retirar URL da fila: {e}&quot;)
+        return index_pb2.TakeNextResponse(url=&quot;&quot;)
     
-<tr><td class="decor data-decor"><span class="code">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td>&nbsp;</td>
-<td class="singlecolumn"><strong>MAX_MESSAGE_LENGTH</strong> = 104857600</td></tr></table>
-</body></html>
+def takeProcessedUrl(self, request, context):
+    &quot;&quot;&quot;
+    Método takeProcessedUrl:
+        - Retira o próximo URL da fila de URLs a visitar.
+    &quot;&quot;&quot;
+
+    for url in self.fila:
+        if url == request.url:
+            self.fila.remove(url)
+            print(f&quot;[Fila] URL processado removido: {url}. Restam {self.fila.qsize()} URLs.&quot;)
+            break
+    
+def getIndexSize(self, request, context):
+    &quot;&quot;&quot;
+    Método getIndexSize:
+        - Retorna o tamanho do índice invertido.
+    &quot;&quot;&quot;
+    return index_pb2.BarrelSizeResponse(size=len(self.indice_invertido))</code></pre>
+<p>def server(port, barrel_id): ““” Função server: - Inicia o servidor
+gRPC do Barrel. - Configura as opções de tamanho máximo de mensagem. -
+Carrega a configuração para obter informações sobre réplicas. - Regista
+os serviços do Barrel no servidor gRPC. - Inicia o servidor e aguarda
+por terminação. ““”</p>
+<pre><code>server = grpc.server(
+    futures.ThreadPoolExecutor(max_workers=10),
+    options=[
+        (&#39;grpc.max_send_message_length&#39;, MAX_MESSAGE_LENGTH),
+        (&#39;grpc.max_receive_message_length&#39;, MAX_MESSAGE_LENGTH),
+    ]
+)
+
+replica_barrels = []
+config = load_config()
+for barrel_config in config[&#39;barrels&#39;]:
+    if barrel_config[&#39;id&#39;] != barrel_id:
+        replica_barrels.append(f&quot;{barrel_config[&#39;ip&#39;]}:{barrel_config[&#39;port&#39;]}&quot;) # lista de réplicas
+
+servico = BarrelServicer(barrel_id, replica_barrels)
+index_pb2_grpc.add_StorageBarrelServicer_to_server(servico, server)
+index_pb2_grpc.add_GatewayServicer_to_server(servico, server)
+
+server.add_insecure_port(f&quot;0.0.0.0:{port}&quot;) # escuta em todas as interfaces
+server.start()
+print(f&quot;Barrel {barrel_id} iniciado na porta {port}&quot;)
+try:
+    server.wait_for_termination()
+except KeyboardInterrupt:
+    servico.guardar_dados() # guarda a fila antes de encerrar
+    print(&quot;A encerrar o Barrel...&quot;)
+    server.stop(0)</code></pre>
+<p>def load_config(file_path=‘config.json’): ““” Função load_config: -
+Carrega a configuração do ficheiro JSON especificado. - Retorna o
+conteúdo do ficheiro como um dicionário Python. ““” try: with
+open(file_path, ‘r’) as f: return json.load(f) except FileNotFoundError:
+print(f”ERRO: Ficheiro de configuração ‘{file_path}’ não encontrado.”)
+sys.exit(1)</p>
+<p>if <strong>name</strong> == ‘<strong>main</strong>’: ““” Main: -
+Verifica o ID do barrel passado como argumento. - Carrega a configuração
+do ficheiro JSON. - Procura a porta correspondente ao ID do barrel. -
+Inicia o servidor gRPC do Barrel. ““”</p>
+<pre><code># 1. Verifica e obtém o ID do argumento
+if len(sys.argv) &lt; 2:
+    print(&quot;ERRO: Uso correto é: python barrel.py &lt;ID_DO_BARREL&gt; (ex: barrel_1)&quot;)
+    sys.exit(1)
+
+barrel_id = sys.argv[1] # ID do barrel a iniciar
+
+# 2. Carrega a configuração
+config = load_config()
+
+port = None
+
+# 3. Procura a porta que corresponde ao ID no config.json
+for barrel_config in config[&#39;barrels&#39;]:
+    if barrel_config[&#39;id&#39;] == barrel_id:
+        port = barrel_config[&#39;port&#39;]
+        break
+
+if port is None:
+    print(f&quot;ERRO: ID do Barrel &#39;{barrel_id}&#39; não encontrado na secção &#39;barrels&#39; do config.json.&quot;)
+    sys.exit(1)
+
+server(port, barrel_id) # incia o servidor gRPC </code></pre>
+</body>
+</html>
