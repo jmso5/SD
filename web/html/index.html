@@ -8,8 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <script>
 
+        // Botão para alternar entre os modos de pesquisa e indexação
         function toggleMode() {
-            const toggleButton = document.getElementById('toggle-mode-button');
+            const toggleButton = document.getElementById('toggle-mode-button'); 
             const actionInput = document.getElementById('action');
             const toggleIcon = document.getElementById('toggle-icon');
             const searchInput = document.getElementById('input');
@@ -18,14 +19,14 @@
             if (actionInput.value === 'search') {
                 // Mudar para o modo INDEXAR URL
                 actionInput.value = 'index';
-                toggleIcon.src = '/web/html/images/search-icon.png'; // Caminho do seu ícone de link
+                toggleIcon.src = '/web/html/images/search-icon.png'; 
                 toggleIcon.alt = 'Modo Indexar URL';
                 searchInput.placeholder = 'Indexar URL';
                 toggleButton.setAttribute('data-tooltip', 'Mudar para Pesquisar Palavras');
             } else {
                 // Mudar para o modo PESQUISAR PALAVRAS
                 actionInput.value = 'search';
-                toggleIcon.src = '/web/html/images/link-icon.png'; // Caminho do seu ícone de pesquisa
+                toggleIcon.src = '/web/html/images/link-icon.png'; 
                 toggleIcon.alt = 'Modo Pesquisar Palavras';
                 searchInput.placeholder = 'Pesquisar Palavras';
                 toggleButton.setAttribute('data-tooltip', 'Mudar para Indexar URL');
@@ -34,13 +35,10 @@
 
 
 
-        /**
-         * Envia o formulário de pesquisa ou indexação usando AJAX.
-         * @param {Event} event - O evento de envio do formulário.
-         */
+        // Envia o formulário para indexar URL ou pesquisar palavras
         async function submitForm(event) {
             event.preventDefault();
-            const form = event.target;
+            const form = event.target; 
             const formData = new FormData(form);
             const input = formData.get('input');
             const action = document.getElementById('action').value;
@@ -52,14 +50,15 @@
             }
 
             try{
+                // Verifica a ação e envia para a rota correta
                 if (action === 'index'){
 
-                    const response = await fetch('/index_url', { // Rota corrigida para /index_url
+                    const response = await fetch('/index_url', { 
                     method: 'post',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
                     },
-                    body: new URLSearchParams({ 'url': input }) // Parâmetro corrigido para 'url'
+                    body: new URLSearchParams({ 'url': input }) 
                     });
 
                     if (response.ok) {
@@ -73,7 +72,7 @@
                     // Rota corrigida para /search_word
                     window.location.href = `/search_word?query=${encodeURIComponent(input)}`; 
                 }
-                
+
             
             }catch (error){
                 console.error("Error:", error);
@@ -81,11 +80,7 @@
             }
         }
 
-        // validar urls
-        /**
-         * Verifica se a URL é válida e começa com http:// ou https://
-         * @param {string} url - A URL a ser verificada.
-         * */
+        // verifica se o url é válido ou seja se começa com http:// ou https://
         function isValidUrl(url) {
             try {
                 const parsedUrl = new URL(url);
@@ -99,8 +94,10 @@
         const wsUrl = `ws://${host}/ws/stats`;
         let ws;
         
+        // função para conectar ao WebSocket
         function connectWebSocket(){
-            ws = new WebSocket(wsUrl);
+            ws = new WebSocket(wsUrl); // cria uma nova conexão WebSocket
+
             ws.onopen = function(event) {
                 console.log("WebSocket connection established.");
             };
@@ -120,6 +117,7 @@
             };
         }
 
+        // função para atualizar as estatísticas na interface
         function updateStats(stats){
             // atualizar Top 10 Pesquisas
             const topSearchesList = document.getElementById("top-searches-list");
@@ -187,7 +185,7 @@
 
     <script src="/web/html/background.js"></script>
 
-
+    
     <div class="search-container">
         <h2>Bem-vindo ao</h2>
         <h1>Go<img src="/web/html/images/logo.jpg" class= "logo-img" id="logo-img">gol</h1>
@@ -208,6 +206,7 @@
         </form>
     </div>
 
+    <!-- Tabelas -->
     <div id="monitor-card" class="monitor-card">
         <h3>Estatísticas do Servidor</h3>
         <div class="columns-container">

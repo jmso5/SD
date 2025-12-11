@@ -28,12 +28,11 @@ body {
     margin-top: 40px; 
 }
 
-        /* --- TÍTULO (ESTILO STRANGER THINGS) --- */
+/* --- TÍTULO (ESTILO STRANGER THINGS) --- */
 h1 {
     font-family:serif;    
     font-size: 100px; 
     font-weight: 700;
-    /* Vermelho Vivo para o Neon */
     color: #e50914; 
     margin-top: -30px;
     letter-spacing: 12px;

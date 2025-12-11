@@ -31,8 +31,6 @@ As principais funcionalidades e rotas implementadas incluem:
 
     5. **Gestão de Erros e Fallbacks:**
         * Implementa o carregamento de configurações (`load_config`) para obeter os IPs e portas do gateway a partir de um ficheiro JSON.
-        * Rota `offline` para renderizar uma página de fallback quando o servidor está offline.
-        * Endpoint de verificação de saúde (`/api/health`) para monitorizar o estadp do servidor.
 
 O módulo depende do `client.py` (localizado na pasta backend).
 """
@@ -42,11 +40,9 @@ import sys
 from fastapi import Form, FastAPI
 from urllib.request import Request
 import requests
-from google.protobuf import empty_pb2 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi import Body, WebSocket, WebSocketDisconnect, BackgroundTasks
 from google import genai
@@ -295,7 +291,7 @@ async def hacker_news_user_stories(querys_hn: dict = Body(...)):
     print(f"Total de histórias indexadas do Hacker News: {num_indexed}")
 
     return {
-        "num_indexed": num_indexed,
+        "num_indexed": num_indexed
     }
 
 
@@ -339,14 +335,21 @@ async def generate_analysis(data: dict = Body(...)):
     
     # cliente gemini
     client_genai = genai.Client(api_key=api_key)
+
+    ai_analysis = "Não foi possível gerar a análise no momento."
     
-    response = client_genai.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
+    try:
+        response = client_genai.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        ai_analysis = response.text
+    except Exception as e:
+        response = "Analise não disponível no momento."
+        print(f"Erro ao gerar análise com a API Gemini: {str(e)}")
 
     return {
-        "analysis": response.text
+        "analysis": ai_analysis
     }
 
 
@@ -384,7 +387,6 @@ async def websocket_endpoint(websocket: WebSocket):
             # verifica se houve mudanças nas estatísticas
             if current_stats_data != last_stats_data:
                 await websocket.send_json(current_stats_data) # enviar dados atualizados 
-                print("WebSocket: Estatísticas enviadas.")
 
                 last_stats_data = current_stats_data # atualizar os dados das estatísticas
 
@@ -402,34 +404,6 @@ def load_config():
     with open('../backend/config.json', 'r', encoding='utf-8') as f:
         config = json.load(f)
     return config
-
-
-@router.get("/offline", response_class=HTMLResponse)
-async def offline_page():
-    """
-    Renderiza a página fallback quando o servidor está offline.~
-
-    Tenta ler e retornar o conteúdo HTML do ficheiro 'offline.html'.
-
-    Returns:
-        HTMLResponse: Conteúdo HTML da página offline.
-    """
-    
-    web_dir = "path/to/web/directory"  # Define the path to the web directory
-    try:
-        with open(os.path.join(web_dir, "html", "offline.html"), "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
-    except Exception as e:
-        return HTMLResponse(content="<h1>Offline - Servidor Indisponível</h1><p>Por favor, tente novamente mais tarde.</p>")
-
-@router.get("/api/health")
-async def health_check():
-    """
-    Endpoint para verificar se o servidor está online.
-    Utilizado pelo service worker para detectar o status da conexão.
-    """
-    return JSONResponse(content={"status": "online"})
-
 
 
 app.include_router(router) # Inclui as rotas na aplicação FastAPI

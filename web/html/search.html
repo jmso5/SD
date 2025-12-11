@@ -7,6 +7,7 @@
     <link href="/web/html/styling/background.css" rel="stylesheet" type="text/css">
 
     <script>
+    // Envia os termos de pesquisa
     async function submitForm(event) {
         event.preventDefault();
         const form = event.target;
@@ -39,7 +40,7 @@
     <script src="/web/html/background.js"></script>
 
 
-
+    <!-- Container de pesquisa e botao para voltar para a página inicial -->
     <div class="search-container">
         <form onsubmit="submitForm(event)" class="search-form">
             <button type="button" class="index-button" onclick="window.location.href='/'">
@@ -56,9 +57,10 @@
     {% if search_results %}
         <h1>Resultados de Pesquisa</h1>
 
-        <!--  CAIXA Vermelha (EXTERIOR) -->
+        <!--  Caixa exterior vermelha  -->
         <div class="result-outer">
 
+            <!-- Caixa de análise da gemini API-->
             <div class="analysis-container" id="analysis-container">
                 <div class="analysis-card">
                     <div class="analysis-header">
@@ -73,7 +75,7 @@
             </div>
 
 
-            <!--  CAIXA BRANCA (INTERIOR) -->
+            <!--  Caixa interior branca-->
             <div class="result-inner">
 
                 {% for result in search_results %}
@@ -98,8 +100,7 @@
             </div>
         </div>
 
-        <!-- Adicionando a opção de hackernews-->
-        <!-- ===== HACKERNEWS INDEXING SECTION ===== -->
+        <!-- Parte visual do hackernews-->
         <div class="hackernews-section" id="hackernews-section">
             <div class="hackernews-card">
                 <div class="hackernews-header">
@@ -178,14 +179,14 @@
 
     <!-- Função para gerar a analise contextualizada -->
     <script>
-       // Função para gerar a analise contextualizada (com coleta de snippets)
+       // Função para gerar a analise contextualizada usando a API Gemini
         async function generateAnalysis() {
-            const analysisResultDiv = document.getElementById('analysis-result');
+            const analysisResultDiv = document.getElementById('analysis-result'); // Div onde o resultado será exibido
             
             const query = "{{ query }}"; 
-            const searchTerms = query.split(/\s+/).filter(term => term.length > 0); // Termos de pesquisa
+            const searchTerms = query.split(/\s+/).filter(term => term.length > 0); // Divide a query em termos individuais
 
-            // 1. Coletar os Snippets
+            // Snippets dos resultados da pesquisa
             const resultItems = document.querySelectorAll('.snipped-data');
             const snippets = [];
 
@@ -208,34 +209,33 @@
                 return;
             }
 
-            // 2. Feedback visual e desativação do botão
-            analysisResultDiv.classList.remove('hidden');
+            // Feedback visual 
+            analysisResultDiv.classList.remove('hidden'); 
             analysisResultDiv.textContent = "A gerar análise contextualizada pela IA...";
+            
 
-            // 3. Enviar Requisição POST para o FastAPI
+            // Envia os dados para o backend para análise
             try {
-                const response = await fetch('/geminiAPI', { // Usando /geminiAPI conforme o seu último endpoint
+                const response = await fetch('/geminiAPI', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ 
                         search_queries: searchTerms, // Envia a lista de termos
-                        snippets: snippets           // Envia a lista de snippets (objetos)
+                        snippets: snippets           // Envia a lista de snippets (resultados de pesquisa)
                     })
                 });
 
 
                 if (response.ok) {
-                    const data = await response.json();
-                    analysisResultDiv.innerHTML = `<h3>🧠 Análise Contextual (IA)</h3><pre>${data.analysis}</pre>`;
+                    const data = await response.json(); 
+                    analysisResultDiv.innerHTML = `<h3> Análise Contextual (IA)</h3><pre>${data.analysis}</pre>`;
                 } else {
                     const error = await response.json();
                     analysisResultDiv.textContent = `Erro ${response.status_code}: ${error.error || "Falha ao gerar a análise."}`;
                 }
             } catch (error) {
-                analysisButton.disabled = false;
-                analysisButton.textContent = "Generate Analysis";
                 analysisResultDiv.textContent = "Erro de rede ao contactar o servidor de análise: " + error;
             }
         }
@@ -243,6 +243,7 @@
 
        
         async function hackernews(){
+            // Elementos 
             const hackernewsButton = document.getElementById('hackernews-button');
             const buttonIcon = document.getElementById('hn-button-icon');
             const buttonText = document.getElementById('hn-button-text');
@@ -252,8 +253,6 @@
             const progressBar = document.getElementById('hn-progress-bar');
             const progressFill = document.getElementById('progress-fill');
 
-            // Criar efeito de partículas ao clicar
-            createParticles(hackernewsButton);
 
             // Desabilitar botão e mostrar loading
             hackernewsButton.disabled = true;
@@ -261,7 +260,7 @@
             buttonIcon.textContent = '⏳';
             buttonText.textContent = 'Indexando...';
             
-            // Esconder resultado anterior
+            // Esconder resultados anterior
             resultDiv.classList.add('hidden');
             
             // Mostrar barra de progresso
@@ -282,17 +281,18 @@
                 // Parar animação de progresso
                 progressFill.style.width = '100%';
 
-                setTimeout(() => {
+                // Pequena pausa para efeito visual
+                setTimeout(async () => {
                     progressBar.classList.add('hidden');
                     resultDiv.classList.remove('hidden');
                     
                     
                     if (response.ok) {
-                        const data = response.json();
+                        const data = await response.json();
                         
                         if (data.num_indexed == 0){
                             resultDiv.classList.add('error');
-                            resultIcon.textContent = '⚠️';
+                            resultIcon.textContent = 'Nenhum resultado obtido';
                             resultText.innerHTML = `
                                 <strong>Nenhuma story encontrada</strong><br>
                                 <span style="font-size: 14px; opacity: 0.8;">
@@ -362,35 +362,11 @@
             }, 300);
         }
 
-        // Função para criar partículas ao clicar
-        function createParticles(button) {
-            const rect = button.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            
-            for (let i = 0; i < 12; i++) {
-                const particle = document.createElement('div');
-                particle.classList.add('particle');
-                
-                const angle = (Math.PI * 2 * i) / 12;
-                const distance = 50 + Math.random() * 50;
-                const tx = Math.cos(angle) * distance;
-                const ty = Math.sin(angle) * distance;
-                
-                particle.style.left = centerX + 'px';
-                particle.style.top = centerY + 'px';
-                particle.style.setProperty('--tx', tx + 'px');
-                particle.style.setProperty('--ty', ty + 'px');
-                
-                document.body.appendChild(particle);
-                
-                setTimeout(() => particle.remove(), 1000);
-            }
-        }
-        
+        // Iniciar análise quando o conteúdo estiver carregado
         document.addEventListener('DOMContentLoaded', () => {
             // Verifica se os resultados de pesquisa existem na página renderizada
             const resultContainer = document.querySelector('.result-outer');
+            // Quando o container de resultados existir, chama a função de análise
             if (resultContainer) {
                 generateAnalysis(); // Chama a função para iniciar a análise
             }
