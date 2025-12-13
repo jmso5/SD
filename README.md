@@ -83,7 +83,7 @@ Este projeto é composto por três componentes principais:
 2. **Execução:**
     - Certifique-se que tem todas as bibliotecas necessárias instaladas, caso use o "pip" execute este comando no seu terminal para evitar erros de bibliotecas:
         ```bash
-            pip install grpcio grpcio-tools requests beautifulsoup4 fastapi uvicorn jinja2 python-multipart websockets google-genai protobuf
+            pip install grpcio grpcio-tools requests beautifulsoup4 fastapi uvicorn jinja2 python-multipart websockets google-genai protobuf httpx
         ```  
 
     - Certifique-se que está dentro da pasta `backend`:

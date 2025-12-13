@@ -39,14 +39,15 @@ import os
 import sys
 from fastapi import Form, FastAPI
 from urllib.request import Request
-import requests
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi import Body, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi import Body, WebSocket, WebSocketDisconnect
 from google import genai
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import httpx
 
 
 # Adiciona a diretoria 'pai' (backend) ao sys.path para encontrar o client.py
@@ -68,6 +69,7 @@ templates = Jinja2Templates(directory=os.path.join(web_dir, "html"))
 jump = 10  # Número de resultados por página
 pageNum = 1  # Página atual
 
+executor = ThreadPoolExecutor(max_workers=10)
 
 
 # Rota para a página inicial
@@ -104,8 +106,8 @@ async def index_url(url: str = Form(...)):
     gateway_port = config['gateway']['port']
     
     try:
-        client_instance = client.Client(gateway_ip, gateway_port)
-        client_instance.submit_url(url)
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(executor, lambda: client.Client(gateway_ip, gateway_port).submit_url(url))
     except Exception as e:
         return {"message": "Não foi possível realizar a indexação. Por favor, tente novamente mais tarde."}
 
@@ -138,9 +140,10 @@ async def search_word(request: Request, query: str = "", page: int = 1):
     gate_ip = config['gateway']['ip']
     gate_port = config['gateway']['port']
     client_instance = client.Client(gate_ip, gate_port)
-    
+
+    loop = asyncio.get_event_loop()
     try:
-        results = client_instance.search(query)
+        results = await loop.run_in_executor(executor, lambda: client_instance.search(query))
     except Exception as e:
         results = None
         print("Não foi possível realizar a pesquisa neste momento.")
@@ -208,8 +211,9 @@ async def get_backlinks(request: Request, url: str = "", page: int = 1, query: s
     gate_port = config['gateway']['port']
     client_instance = client.Client(gate_ip, gate_port)
 
+    loop = asyncio.get_event_loop()
     try:
-        raw_backlinks = client_instance.search_backlinks(url)
+        raw_backlinks = await loop.run_in_executor(executor, lambda: client_instance.search_backlinks(url))
     except Exception as e:
         raw_backlinks = []
         print("Não foi possível obter os backlinks neste momento.")
@@ -263,27 +267,38 @@ async def hacker_news_user_stories(querys_hn: dict = Body(...)):
     queries = querys_hn.get("query", "").split()
     num_indexed = 0
    
+    for query in queries:
+        print(f"Termo de pesquisa: {query}")
     try:
-        top_stories = requests.get("https://hacker-news.firebaseio.com/v0/topstories.json").json()
+        # Usar httpx para requisições HTTP assíncronas 
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            # Obter top stories
+            response = await http_client.get("https://hacker-news.firebaseio.com/v0/topstories.json")
+            top_stories = response.json()
 
-        for ids in top_stories[:20]:
-            story = requests.get(f"https://hacker-news.firebaseio.com/v0/item/{ids}.json").json()
-            text = story.get("text", " ")
-            url = story.get("url", "")
-            print(f"Story URL: {url}")
-
-            num_queries_found = 0
-            for query in queries:
-                if query in text:
-                    num_queries_found += 1
-
-
-            if num_queries_found == len(queries):
+            for ids in top_stories[:20]:
+                story_response = await http_client.get(f"https://hacker-news.firebaseio.com/v0/item/{ids}.json")
+                story = story_response.json()
+                
+                text = story.get("text", " ")
                 url = story.get("url", "")
-                if url:
-                    print(f"Indexing story with URL: {url}")
-                    client_instance.submit_url(url)
-                    num_indexed += 1
+                title = story.get("title", "")
+                print(f"Story URL: {url}")
+
+                num_queries_found = 0
+                for query in queries:
+                    if query.lower() in text.lower() or query.lower() in title.lower():
+                        num_queries_found += 1
+
+                if num_queries_found == len(queries):
+                    url = story.get("url", "")
+                    if url:
+                        print(f"Indexing story with URL: {url}")
+                        # Executar submit_url em thread separada
+                        loop = asyncio.get_running_loop()
+                        await loop.run_in_executor(executor, lambda u=url: client_instance.submit_url(u))
+                        num_indexed += 1
+
 
     except Exception as e:
         return {f"Erro ao buscar histórias do Hacker News: {str(e)}"}
@@ -337,15 +352,18 @@ async def generate_analysis(data: dict = Body(...)):
     client_genai = genai.Client(api_key=api_key)
 
     ai_analysis = "Não foi possível gerar a análise no momento."
-    
+    loop = asyncio.get_event_loop()
     try:
-        response = client_genai.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
+        ai_analysis = await loop.run_in_executor(
+            executor,
+            lambda: client_genai.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            ).text
         )
-        ai_analysis = response.text
+       
     except Exception as e:
-        response = "Analise não disponível no momento."
+        ai_analysis = "Analise não disponível no momento."
         print(f"Erro ao gerar análise com a API Gemini: {str(e)}")
 
     return {
